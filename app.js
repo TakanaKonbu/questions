@@ -62,16 +62,98 @@ function generateExam() {
   viewer.scrollIntoView({ behavior: 'smooth' });
 }
 
-function updateViewer() {
+let kaisetuCache = {};
+
+const toggleExplanationBtn = document.getElementById('toggle-explanation-btn');
+const explanationContent = document.getElementById('explanation-content');
+
+function getFileInfo(path) {
+  // Extract XX and YY from path like "img/ippan/56_01.png"
+  const filename = path.split('/').pop();
+  const nameWithoutExt = filename.split('.')[0].trim();
+  const cleaned = nameWithoutExt.replace(/\s+/g, '');
+  const parts = cleaned.split('_');
+  
+  if (parts.length < 2) {
+    // Fallback if underscore is missing
+    return { year: cleaned.slice(0, 2), question: parseInt(cleaned.slice(-2)) };
+  }
+  
+  return { year: parts[0], question: parseInt(parts[1]) };
+}
+
+async function fetchExplanation(year, questionNum) {
+  try {
+    // kaisetuData is loaded from kaisetu_data.js
+    if (window.kaisetuData && window.kaisetuData[year]) {
+      const qNumStr = questionNum.toString();
+      const text = window.kaisetuData[year][qNumStr];
+      if (text) {
+        return text;
+      }
+    }
+    return "この問題の解説は見つかりませんでした。";
+  } catch (error) {
+    console.error(error);
+    return "解説の読み込み中にエラーが発生しました。";
+  }
+}
+
+async function updateViewer() {
   if (selectedImages.length === 0) return;
   
+  // Reset explanation view
+  explanationContent.style.display = 'none';
+  toggleExplanationBtn.textContent = '解説を見る';
+  explanationContent.innerHTML = '';
+
   examImg.style.opacity = 0;
+  
+  const currentPath = selectedImages[currentIndex];
+  const { year, question } = getFileInfo(currentPath);
+
+  // Load explanation in background
+  const explanation = await fetchExplanation(year, question);
+  
+  // Pre-process GitHub alerts
+  let mdText = explanation.replace(/> \[!(\w+)\]\n((?:> .*\n?)+)/gim, (match, type, content) => {
+    let cleanContent = content.replace(/^> /gim, '');
+    return `<div class="alert ${type}">\n\n${cleanContent}\n\n</div>`;
+  });
+
+  // Render markdown
+  explanationContent.innerHTML = marked.parse(mdText);
+
+  // Render math formulas
+  if (window.renderMathInElement) {
+    renderMathInElement(explanationContent, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false},
+        {left: '\\(', right: '\\)', display: false},
+        {left: '\\[', right: '\\]', display: true}
+      ],
+      throwOnError: false
+    });
+  }
+
   setTimeout(() => {
-    examImg.src = selectedImages[currentIndex];
+    examImg.src = currentPath;
     examImg.style.opacity = 1;
     statusText.textContent = `${currentIndex + 1} / ${selectedImages.length}`;
   }, 200);
 }
+
+toggleExplanationBtn.addEventListener('click', () => {
+  if (explanationContent.style.display === 'none' || explanationContent.style.display === '') {
+    explanationContent.style.display = 'block';
+    toggleExplanationBtn.textContent = '解説を隠す';
+    explanationContent.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else {
+    explanationContent.style.display = 'none';
+    toggleExplanationBtn.textContent = '解説を見る';
+  }
+});
 
 function next() {
   currentIndex = (currentIndex + 1) % selectedImages.length;
