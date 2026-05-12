@@ -249,6 +249,37 @@ prevBtn.addEventListener('click', prev);
 nextBtn.addEventListener('click', next);
 startBtn.addEventListener('click', generateExam);
 
+// Simple Test Logic
+const simpleTestBtn = document.getElementById('simple-test-btn');
+const questionCountInput = document.getElementById('question-count');
+const countDisplay = document.getElementById('count-display');
+
+questionCountInput.addEventListener('input', () => {
+  countDisplay.textContent = questionCountInput.value;
+});
+
+function generateSimpleTest() {
+  const subject = subjectSelect.value;
+  const count = parseInt(questionCountInput.value);
+
+  const availableImages = appData.images[subject];
+  if (!availableImages || availableImages.length === 0) {
+    alert('画像データがありません。');
+    return;
+  }
+
+  // Shuffle and pick
+  const shuffled = [...availableImages].sort(() => 0.5 - Math.random());
+  selectedImages = shuffled.slice(0, count).map(img => `img/${subject}/${img}`);
+
+  currentIndex = 0;
+  updateViewer();
+  viewer.style.display = 'flex';
+  viewer.scrollIntoView({ behavior: 'smooth' });
+}
+
+simpleTestBtn.addEventListener('click', generateSimpleTest);
+
 // Modal Logic
 const modal = document.getElementById('image-modal');
 const fullImg = document.getElementById('full-img');

@@ -38,7 +38,14 @@
                     <option value="jitsugi1">実技1</option>
                     <option value="jitsugi2">実技2</option>
                 </select>
-                <button id="start-btn">過去問作成</button>
+                <div class="test-settings">
+                    <label for="question-count">問題数: <span id="count-display">5</span>問</label>
+                    <input type="range" id="question-count" min="1" max="30" value="5">
+                </div>
+                <div class="button-group">
+                    <button id="start-btn">過去問作成 (15問)</button>
+                    <button id="simple-test-btn" class="accent-btn">簡易テスト作成</button>
+                </div>
             </div>
 
             <div id="viewer" class="viewer">
