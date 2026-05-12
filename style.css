@@ -49,6 +49,23 @@ h1 {
   -webkit-text-fill-color: transparent;
 }
 
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background-color: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.status-info {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
 .controls {
   display: flex;
   gap: 1rem;

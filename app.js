@@ -1,9 +1,7 @@
-const ippanImages = [
-  "56_01.png", "56_02.png", "56_03.png", "56_04.png", "56_05.png", "56_06.png", "56_07.png", "56_08.png", "56_09.png", "56_10.png", "56_11.png", "56_12.png", "56_13.png", "56_14.png", "56_15.png",
-  "57_01.png", "57_02.png", "57_03.png", "57_04.png", "57_05.png", "57_06.png", "57_07.png", "57_08.png", "57_09.png", "57_10.png", "57_11.png", "57_12.png", "57_13.png", "57_14.png", "57_15.png",
-  "58_01.png", "58_02.png", "58_03.png", "58_04.png", "58_05.png", "58_06.png", "58_07.png", "58_08.png", "58_09.png", "58_10.png", "58_11.png", "58_12.png", "58_13.png", "58_14.png", "58_15.png",
-  "59_01.PNG", "59_ 02.PNG", "59_03.PNG", "59_04.PNG", "59_05.PNG", "59_06.PNG", "59_07.PNG", "59_08.PNG", "59_09.PNG", "59_10.PNG", "59_11.PNG", "59_12.PNG", "59_13.PNG", "59_14.PNG", "59_15.PNG"
-];
+let appData = {
+  images: { ippan: [], senmon: [], jitsugi1: [], jitsugi2: [] },
+  explanations: { ippan: {} }
+};
 
 let selectedImages = [];
 let currentIndex = 0;
@@ -15,6 +13,78 @@ const examImg = document.getElementById('exam-img');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
 const statusText = document.getElementById('status-text');
+
+// New DOM elements for data updating
+const folderInput = document.getElementById('folder-input');
+const updateDataBtn = document.getElementById('update-data-btn');
+const dataStatusText = document.getElementById('data-status-text');
+
+function loadDataFromStorage() {
+  const storedData = localStorage.getItem('kakomonData');
+  if (storedData) {
+    appData = JSON.parse(storedData);
+    const count = appData.images.ippan.length;
+    dataStatusText.textContent = `データ読込済（一般知識: 画像 ${count}枚）`;
+  } else {
+    dataStatusText.textContent = 'データが読み込まれていません。「読み込む」ボタンを押してください。';
+  }
+}
+
+updateDataBtn.addEventListener('click', () => {
+  folderInput.click();
+});
+
+folderInput.addEventListener('change', async (e) => {
+  const files = e.target.files;
+  if (files.length === 0) return;
+
+  dataStatusText.textContent = 'データをスキャン中...';
+  
+  appData = {
+    images: { ippan: [], senmon: [], jitsugi1: [], jitsugi2: [] },
+    explanations: { ippan: {} }
+  };
+
+  const mdRegex = /(^|\n)(#\s*問(\d+)[:：]?\s*.*?)(?=\n#\s*問|$)/igs;
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const path = file.webkitRelativePath; // e.g., 過去問/img/ippan/56_01.png
+    
+    if (path.includes('/img/ippan/') && /\.(png|jpg|jpeg)$/i.test(file.name)) {
+      appData.images.ippan.push(file.name);
+    }
+    
+    if (path.includes('/kaisetu/ippan/') && file.name.endsWith('.md')) {
+      const year = file.name.split('.')[0].trim();
+      const text = await file.text();
+      const matches = [...text.matchAll(mdRegex)];
+      
+      if (!appData.explanations.ippan[year]) {
+        appData.explanations.ippan[year] = {};
+      }
+      
+      matches.forEach(match => {
+        const fullText = match[2].trim();
+        const qNum = match[3].trim();
+        appData.explanations.ippan[year][qNum] = fullText;
+      });
+    }
+  }
+
+  try {
+    localStorage.setItem('kakomonData', JSON.stringify(appData));
+    loadDataFromStorage();
+    alert('データの読み込みと保存が完了しました！\n次回からは自動で読み込まれます。');
+  } catch (error) {
+    console.error(error);
+    alert('保存に失敗しました。');
+    dataStatusText.textContent = '保存エラー';
+  }
+});
+
+// Init on load
+loadDataFromStorage();
 
 function getGroup(filename) {
   // Remove extension, trim, and get last 2 digits
@@ -38,7 +108,13 @@ function generateExam() {
     groups[key] = [];
   }
 
-  ippanImages.forEach(img => {
+  const availableImages = appData.images[subject];
+  if (!availableImages || availableImages.length === 0) {
+    alert('画像データがありません。「データフォルダを読み込む / 更新」ボタンからフォルダを読み込んでください。');
+    return;
+  }
+
+  availableImages.forEach(img => {
     const groupKey = getGroup(img);
     if (groups[groupKey]) {
       groups[groupKey].push(img);
@@ -84,10 +160,9 @@ function getFileInfo(path) {
 
 async function fetchExplanation(year, questionNum) {
   try {
-    // kaisetuData is loaded from kaisetu_data.js
-    if (window.kaisetuData && window.kaisetuData[year]) {
+    if (appData.explanations.ippan[year]) {
       const qNumStr = questionNum.toString();
-      const text = window.kaisetuData[year][qNumStr];
+      const text = appData.explanations.ippan[year][qNumStr];
       if (text) {
         return text;
       }
@@ -140,7 +215,7 @@ async function updateViewer() {
   setTimeout(() => {
     examImg.src = currentPath;
     examImg.style.opacity = 1;
-    statusText.textContent = `${currentIndex + 1} / ${selectedImages.length}`;
+    statusText.textContent = `${currentIndex + 1} / ${selectedImages.length} （第${year}回問${question}）`;
   }, 200);
 }
 

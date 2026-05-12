@@ -25,6 +25,12 @@
         </header>
 
         <main>
+            <div class="settings-section">
+                <input type="file" id="folder-input" webkitdirectory directory multiple style="display: none;">
+                <button id="update-data-btn" class="secondary-btn">データフォルダを読み込む / 更新</button>
+                <p id="data-status-text" class="status-info">データが読み込まれていません</p>
+            </div>
+
             <div class="controls">
                 <select id="subject-select">
                     <option value="ippan">一般知識</option>
@@ -58,7 +64,6 @@
         </main>
     </div>
 
-    <script src="kaisetu_data.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
