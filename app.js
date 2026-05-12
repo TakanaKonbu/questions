@@ -145,7 +145,6 @@ function generateExam() {
 
 let kaisetuCache = {};
 
-const toggleExplanationBtn = document.getElementById('toggle-explanation-btn');
 const explanationContent = document.getElementById('explanation-content');
 
 function getFileInfo(path) {
@@ -183,14 +182,15 @@ async function updateViewer() {
   if (selectedImages.length === 0) return;
   
   // Reset explanation view
-  explanationContent.style.display = 'none';
-  toggleExplanationBtn.textContent = '解説を見る';
   explanationContent.innerHTML = '';
 
   examImg.style.opacity = 0;
   
   const currentPath = selectedImages[currentIndex];
   const { year, question } = getFileInfo(currentPath);
+
+  // Set modal title
+  document.getElementById('modal-title').textContent = `第${year}回 問${question} 解説`;
 
   // Load explanation in background
   const explanation = await fetchExplanation(year, question);
@@ -224,14 +224,23 @@ async function updateViewer() {
   }, 200);
 }
 
-toggleExplanationBtn.addEventListener('click', () => {
-  if (explanationContent.style.display === 'none' || explanationContent.style.display === '') {
-    explanationContent.style.display = 'block';
-    toggleExplanationBtn.textContent = '解説を隠す';
-    explanationContent.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  } else {
-    explanationContent.style.display = 'none';
-    toggleExplanationBtn.textContent = '解説を見る';
+const openExplanationBtn = document.getElementById('open-explanation-btn');
+const explanationModal = document.getElementById('explanation-modal');
+const closeExplanation = document.querySelector('.close-explanation');
+
+openExplanationBtn.addEventListener('click', () => {
+  explanationModal.style.display = 'flex';
+  explanationContent.scrollTop = 0;
+});
+
+closeExplanation.addEventListener('click', () => {
+  explanationModal.style.display = 'none';
+});
+
+// Close when clicking outside content
+explanationModal.addEventListener('click', (e) => {
+  if (e.target === explanationModal) {
+    explanationModal.style.display = 'none';
   }
 });
 

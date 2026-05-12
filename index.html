@@ -57,9 +57,18 @@
                 </div>
                 
                 <div class="explanation-section">
-                    <button id="toggle-explanation-btn" class="secondary-btn">解説を見る</button>
-                    <div id="explanation-content" class="explanation-content">
-                        <!-- 解説テキストがここに表示される -->
+                    <button id="open-explanation-btn" class="secondary-btn">解説を見る</button>
+                </div>
+
+                <div id="explanation-modal" class="modal explanation-modal">
+                    <div class="modal-container">
+                        <div class="modal-header">
+                            <h2 id="modal-title">解説</h2>
+                            <span class="close-explanation">&times;</span>
+                        </div>
+                        <div id="explanation-content" class="modal-body explanation-content">
+                            <!-- 解説テキストがここに表示される -->
+                        </div>
                     </div>
                 </div>
 
