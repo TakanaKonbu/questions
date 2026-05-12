@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>過去問ジェネレーター</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>過去問ジェネレーター</h1>
+            <p style="color: var(--text-muted);">学習を効率化するための過去問ランダム生成ツール</p>
+        </header>
+
+        <main>
+            <div class="controls">
+                <select id="subject-select">
+                    <option value="ippan">一般知識</option>
+                    <option value="senmon">専門知識</option>
+                    <option value="jitsugi1">実技1</option>
+                    <option value="jitsugi2">実技2</option>
+                </select>
+                <button id="start-btn">過去問作成</button>
+            </div>
+
+            <div id="viewer" class="viewer">
+                <div class="status">
+                    <span id="status-text">1 / 15</span>
+                </div>
+                <div class="img-container">
+                    <img id="exam-img" src="" alt="過去問画像">
+                </div>
+                <div class="nav-buttons">
+                    <button id="prev-btn">前へ</button>
+                    <button id="next-btn" class="primary-nav">次へ</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
