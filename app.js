@@ -25,6 +25,11 @@ function loadDataFromStorage() {
     appData = JSON.parse(storedData);
     const count = appData.images.ippan.length;
     dataStatusText.textContent = `データ読込済（一般知識: 画像 ${count}枚）`;
+  } else if (typeof PRELOADED_DATA !== 'undefined') {
+    // Use preloaded data from data.js if localStorage is empty
+    appData = PRELOADED_DATA;
+    const count = appData.images.ippan.length;
+    dataStatusText.textContent = `プリロード済みデータを使用中（一般知識: 画像 ${count}枚）`;
   } else {
     dataStatusText.textContent = 'データが読み込まれていません。「読み込む」ボタンを押してください。';
   }
