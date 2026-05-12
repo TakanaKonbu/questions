@@ -1,37 +1,34 @@
-let appData = {
-  images: { ippan: [], senmon: [], jitsugi1: [], jitsugi2: [] },
-  explanations: { ippan: {} }
-};
-
+let appData = { images: { ippan: [] }, explanations: { ippan: {} } };
 let selectedImages = [];
 let currentIndex = 0;
 
 const startBtn = document.getElementById('start-btn');
 const subjectSelect = document.getElementById('subject-select');
-const viewer = document.getElementById('viewer');
-const examImg = document.getElementById('exam-img');
-const prevBtn = document.getElementById('prev-btn');
-const nextBtn = document.getElementById('next-btn');
-const statusText = document.getElementById('status-text');
-
-// New DOM elements for data updating
 const folderInput = document.getElementById('folder-input');
 const updateDataBtn = document.getElementById('update-data-btn');
 const dataStatusText = document.getElementById('data-status-text');
+const viewer = document.getElementById('viewer');
+const examImg = document.getElementById('exam-img');
+const statusText = document.getElementById('status-text');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
 
-function loadDataFromStorage() {
-  const storedData = localStorage.getItem('kakomonData');
-  if (storedData) {
-    appData = JSON.parse(storedData);
+const questionCountInput = document.getElementById('question-count');
+const countDisplay = document.getElementById('count-display');
+const simpleTestBtn = document.getElementById('simple-test-btn');
+
+async function loadDataFromStorage() {
+  const saved = localStorage.getItem('kakomonData');
+  if (saved) {
+    appData = JSON.parse(saved);
     const count = appData.images.ippan.length;
-    dataStatusText.textContent = `データ読込済（一般知識: 画像 ${count}枚）`;
+    dataStatusText.textContent = `保存済みデータを使用中（一般知識: 画像 ${count}枚）`;
   } else if (typeof PRELOADED_DATA !== 'undefined') {
-    // Use preloaded data from data.js if localStorage is empty
     appData = PRELOADED_DATA;
     const count = appData.images.ippan.length;
     dataStatusText.textContent = `プリロード済みデータを使用中（一般知識: 画像 ${count}枚）`;
   } else {
-    dataStatusText.textContent = 'データが読み込まれていません。「読み込む」ボタンを押してください。';
+    dataStatusText.textContent = 'データが読み込まれていません。';
   }
 }
 
@@ -54,7 +51,7 @@ folderInput.addEventListener('change', async (e) => {
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    const path = file.webkitRelativePath; // e.g., 過去問/img/ippan/56_01.png
+    const path = file.webkitRelativePath; 
     
     if (path.includes('/img/ippan/') && /\.(png|jpg|jpeg)$/i.test(file.name)) {
       appData.images.ippan.push(file.name);
@@ -80,21 +77,17 @@ folderInput.addEventListener('change', async (e) => {
   try {
     localStorage.setItem('kakomonData', JSON.stringify(appData));
     loadDataFromStorage();
-    alert('データの読み込みと保存が完了しました！\n次回からは自動で読み込まれます。');
+    alert('データの読み込みと保存が完了しました！');
   } catch (error) {
     console.error(error);
     alert('保存に失敗しました。');
-    dataStatusText.textContent = '保存エラー';
   }
 });
 
-// Init on load
 loadDataFromStorage();
 
 function getGroup(filename) {
-  // Remove extension, trim, and get last 2 digits
   const nameWithoutExt = filename.split('.')[0].trim();
-  // Handle case with extra space like "59_ 02"
   const cleaned = nameWithoutExt.replace(/\s+/g, '');
   return cleaned.slice(-2);
 }
@@ -106,7 +99,6 @@ function generateExam() {
     return;
   }
 
-  // Group images by 01-15
   const groups = {};
   for (let i = 1; i <= 15; i++) {
     const key = i.toString().padStart(2, '0');
@@ -115,7 +107,7 @@ function generateExam() {
 
   const availableImages = appData.images[subject];
   if (!availableImages || availableImages.length === 0) {
-    alert('画像データがありません。「データフォルダを読み込む / 更新」ボタンからフォルダを読み込んでください。');
+    alert('画像データがありません。');
     return;
   }
 
@@ -126,7 +118,6 @@ function generateExam() {
     }
   });
 
-  // Randomly pick one from each group
   selectedImages = [];
   for (let i = 1; i <= 15; i++) {
     const key = i.toString().padStart(2, '0');
@@ -143,68 +134,62 @@ function generateExam() {
   viewer.scrollIntoView({ behavior: 'smooth' });
 }
 
-let kaisetuCache = {};
+function generateSimpleTest() {
+  const subject = subjectSelect.value;
+  const count = parseInt(questionCountInput.value);
 
-const explanationContent = document.getElementById('explanation-content');
-
-function getFileInfo(path) {
-  // Extract XX and YY from path like "img/ippan/56_01.png"
-  const filename = path.split('/').pop();
-  const nameWithoutExt = filename.split('.')[0].trim();
-  const cleaned = nameWithoutExt.replace(/\s+/g, '');
-  const parts = cleaned.split('_');
-  
-  if (parts.length < 2) {
-    // Fallback if underscore is missing
-    return { year: cleaned.slice(0, 2), question: parseInt(cleaned.slice(-2)) };
+  const availableImages = appData.images[subject];
+  if (!availableImages || availableImages.length === 0) {
+    alert('画像データがありません。');
+    return;
   }
-  
-  return { year: parts[0], question: parseInt(parts[1]) };
+
+  const shuffled = [...availableImages].sort(() => 0.5 - Math.random());
+  selectedImages = shuffled.slice(0, count).map(img => `img/${subject}/${img}`);
+
+  currentIndex = 0;
+  updateViewer();
+  viewer.style.display = 'flex';
+  viewer.scrollIntoView({ behavior: 'smooth' });
 }
 
-async function fetchExplanation(year, questionNum) {
-  try {
-    if (appData.explanations.ippan[year]) {
-      const qNumStr = questionNum.toString();
-      const text = appData.explanations.ippan[year][qNumStr];
-      if (text) {
-        return text;
-      }
-    }
-    return "この問題の解説は見つかりませんでした。";
-  } catch (error) {
-    console.error(error);
-    return "解説の読み込み中にエラーが発生しました。";
+if (questionCountInput) {
+  questionCountInput.addEventListener('input', () => {
+    countDisplay.textContent = questionCountInput.value;
+  });
+}
+
+async function fetchExplanation(year, question) {
+  const subject = subjectSelect.value;
+  const yearData = appData.explanations[subject]?.[year];
+  if (yearData && yearData[question]) {
+    // 採点用データ（オブジェクト）か以前の形式（テキスト）かチェック
+    const data = yearData[question];
+    return typeof data === 'object' ? data.text : data;
   }
+  return '# 解説がありません\nデータフォルダが正しく読み込まれているか確認してください。';
 }
 
 async function updateViewer() {
   if (selectedImages.length === 0) return;
   
-  // Reset explanation view
   explanationContent.innerHTML = '';
-
   examImg.style.opacity = 0;
   
   const currentPath = selectedImages[currentIndex];
   const { year, question } = getFileInfo(currentPath);
 
-  // Set modal title
   document.getElementById('modal-title').textContent = `第${year}回 問${question} 解説`;
 
-  // Load explanation in background
   const explanation = await fetchExplanation(year, question);
   
-  // Pre-process GitHub alerts
   let mdText = explanation.replace(/> \[!(\w+)\]\n((?:> .*\n?)+)/gim, (match, type, content) => {
     let cleanContent = content.replace(/^> /gim, '');
     return `<div class="alert ${type}">\n\n${cleanContent}\n\n</div>`;
   });
 
-  // Render markdown
   explanationContent.innerHTML = marked.parse(mdText);
 
-  // Render math formulas
   if (window.renderMathInElement) {
     renderMathInElement(explanationContent, {
       delimiters: [
@@ -224,72 +209,62 @@ async function updateViewer() {
   }, 200);
 }
 
+const explanationContent = document.getElementById('explanation-content');
+
+function getFileInfo(path) {
+  const filename = path.split('/').pop();
+  const nameWithoutExt = filename.split('.')[0].trim();
+  const cleaned = nameWithoutExt.replace(/\s+/g, '');
+  const parts = cleaned.split('_');
+  if (parts.length < 2) {
+    return { year: cleaned.slice(0, 2), question: parseInt(cleaned.slice(-2)) };
+  }
+  return { year: parts[0], question: parseInt(parts[1]) };
+}
+
+function next() {
+  if (currentIndex < selectedImages.length - 1) {
+    currentIndex++;
+    updateViewer();
+  }
+}
+
+function prev() {
+  if (currentIndex > 0) {
+    currentIndex--;
+    updateViewer();
+  }
+}
+
+prevBtn.addEventListener('click', prev);
+nextBtn.addEventListener('click', next);
+startBtn.addEventListener('click', generateExam);
+if (simpleTestBtn) simpleTestBtn.addEventListener('click', generateSimpleTest);
+
 const openExplanationBtn = document.getElementById('open-explanation-btn');
 const explanationModal = document.getElementById('explanation-modal');
 const closeExplanation = document.querySelector('.close-explanation');
 
-openExplanationBtn.addEventListener('click', () => {
-  explanationModal.style.display = 'flex';
-  explanationContent.scrollTop = 0;
-});
+if (openExplanationBtn) {
+  openExplanationBtn.addEventListener('click', () => {
+    explanationModal.style.display = 'flex';
+    explanationContent.scrollTop = 0;
+  });
+}
 
-closeExplanation.addEventListener('click', () => {
-  explanationModal.style.display = 'none';
-});
+if (closeExplanation) {
+  closeExplanation.addEventListener('click', () => {
+    explanationModal.style.display = 'none';
+  });
+}
 
-// Close when clicking outside content
 explanationModal.addEventListener('click', (e) => {
   if (e.target === explanationModal) {
     explanationModal.style.display = 'none';
   }
 });
 
-function next() {
-  currentIndex = (currentIndex + 1) % selectedImages.length;
-  updateViewer();
-}
-
-function prev() {
-  currentIndex = (currentIndex - 1 + selectedImages.length) % selectedImages.length;
-  updateViewer();
-}
-
-prevBtn.addEventListener('click', prev);
-nextBtn.addEventListener('click', next);
-startBtn.addEventListener('click', generateExam);
-
-// Simple Test Logic
-const simpleTestBtn = document.getElementById('simple-test-btn');
-const questionCountInput = document.getElementById('question-count');
-const countDisplay = document.getElementById('count-display');
-
-questionCountInput.addEventListener('input', () => {
-  countDisplay.textContent = questionCountInput.value;
-});
-
-function generateSimpleTest() {
-  const subject = subjectSelect.value;
-  const count = parseInt(questionCountInput.value);
-
-  const availableImages = appData.images[subject];
-  if (!availableImages || availableImages.length === 0) {
-    alert('画像データがありません。');
-    return;
-  }
-
-  // Shuffle and pick
-  const shuffled = [...availableImages].sort(() => 0.5 - Math.random());
-  selectedImages = shuffled.slice(0, count).map(img => `img/${subject}/${img}`);
-
-  currentIndex = 0;
-  updateViewer();
-  viewer.style.display = 'flex';
-  viewer.scrollIntoView({ behavior: 'smooth' });
-}
-
-simpleTestBtn.addEventListener('click', generateSimpleTest);
-
-// Modal Logic
+// Fullscreen Modal Logic
 const modal = document.getElementById('image-modal');
 const fullImg = document.getElementById('full-img');
 const closeModal = document.querySelector('.close-modal');
@@ -299,9 +274,11 @@ examImg.addEventListener('click', () => {
   fullImg.src = examImg.src;
 });
 
-closeModal.addEventListener('click', () => {
-  modal.style.display = 'none';
-});
+if (closeModal) {
+  closeModal.addEventListener('click', () => {
+    modal.style.display = 'none';
+  });
+}
 
 modal.addEventListener('click', (e) => {
   if (e.target === modal) {
