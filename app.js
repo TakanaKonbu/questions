@@ -245,6 +245,26 @@ function prev() {
   updateViewer();
 }
 
-startBtn.addEventListener('click', generateExam);
-nextBtn.addEventListener('click', next);
 prevBtn.addEventListener('click', prev);
+nextBtn.addEventListener('click', next);
+startBtn.addEventListener('click', generateExam);
+
+// Modal Logic
+const modal = document.getElementById('image-modal');
+const fullImg = document.getElementById('full-img');
+const closeModal = document.querySelector('.close-modal');
+
+examImg.addEventListener('click', () => {
+  modal.style.display = 'flex';
+  fullImg.src = examImg.src;
+});
+
+closeModal.addEventListener('click', () => {
+  modal.style.display = 'none';
+});
+
+modal.addEventListener('click', (e) => {
+  if (e.target === modal) {
+    modal.style.display = 'none';
+  }
+});
