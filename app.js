@@ -4,9 +4,6 @@ let currentIndex = 0;
 
 const startBtn = document.getElementById('start-btn');
 const subjectSelect = document.getElementById('subject-select');
-const folderInput = document.getElementById('folder-input');
-const updateDataBtn = document.getElementById('update-data-btn');
-const dataStatusText = document.getElementById('data-status-text');
 const viewer = document.getElementById('viewer');
 const examImg = document.getElementById('exam-img');
 const statusText = document.getElementById('status-text');
@@ -21,68 +18,10 @@ async function loadDataFromStorage() {
   const saved = localStorage.getItem('kakomonData');
   if (saved) {
     appData = JSON.parse(saved);
-    const count = appData.images.ippan.length;
-    dataStatusText.textContent = `保存済みデータを使用中（一般知識: 画像 ${count}枚）`;
   } else if (typeof PRELOADED_DATA !== 'undefined') {
     appData = PRELOADED_DATA;
-    const count = appData.images.ippan.length;
-    dataStatusText.textContent = `プリロード済みデータを使用中（一般知識: 画像 ${count}枚）`;
-  } else {
-    dataStatusText.textContent = 'データが読み込まれていません。';
   }
 }
-
-updateDataBtn.addEventListener('click', () => {
-  folderInput.click();
-});
-
-folderInput.addEventListener('change', async (e) => {
-  const files = e.target.files;
-  if (files.length === 0) return;
-
-  dataStatusText.textContent = 'データをスキャン中...';
-  
-  appData = {
-    images: { ippan: [], senmon: [], jitsugi1: [], jitsugi2: [] },
-    explanations: { ippan: {} }
-  };
-
-  const mdRegex = /(^|\n)(#\s*問(\d+)[:：]?\s*.*?)(?=\n#\s*問|$)/igs;
-
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const path = file.webkitRelativePath; 
-    
-    if (path.includes('/img/ippan/') && /\.(png|jpg|jpeg)$/i.test(file.name)) {
-      appData.images.ippan.push(file.name);
-    }
-    
-    if (path.includes('/kaisetu/ippan/') && file.name.endsWith('.md')) {
-      const year = file.name.split('.')[0].trim();
-      const text = await file.text();
-      const matches = [...text.matchAll(mdRegex)];
-      
-      if (!appData.explanations.ippan[year]) {
-        appData.explanations.ippan[year] = {};
-      }
-      
-      matches.forEach(match => {
-        const fullText = match[2].trim();
-        const qNum = match[3].trim();
-        appData.explanations.ippan[year][qNum] = fullText;
-      });
-    }
-  }
-
-  try {
-    localStorage.setItem('kakomonData', JSON.stringify(appData));
-    loadDataFromStorage();
-    alert('データの読み込みと保存が完了しました！');
-  } catch (error) {
-    console.error(error);
-    alert('保存に失敗しました。');
-  }
-});
 
 loadDataFromStorage();
 
