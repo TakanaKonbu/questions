@@ -26,10 +26,16 @@
                     </div>
                 </div>
             </div>
+            <nav id="main-nav" style="display: none;">
+                <button id="nav-home" class="nav-link active">ホーム</button>
+                <button id="nav-stats" class="nav-link">学習状況</button>
+            </nav>
         </header>
 
         <main>
-            <div class="controls">
+            <!-- Home View -->
+            <div id="home-view" class="view active">
+                <div class="controls">
                 <select id="subject-select">
                     <option value="ippan">一般知識</option>
                     <option value="senmon">専門知識</option>
@@ -84,6 +90,37 @@
                     <button id="next-btn" class="primary-nav">次へ</button>
                 </div>
             </div>
+            </div> <!-- /#home-view の閉じタグを追加 -->
+
+            <!-- Stats View (Dashboard) -->
+            <div id="stats-view" class="view">
+                <div class="dashboard-page">
+                    <div class="page-header">
+                        <h2>学習状況ダッシュボード</h2>
+                        <button id="stats-back-btn" class="secondary-btn small-btn">← ホームに戻る</button>
+                    </div>
+                    
+                    <div class="stats-summary">
+                        <div class="summary-card">
+                            <span class="label">総解答数</span>
+                            <span id="total-attempts" class="value">0</span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="label">平均正解率</span>
+                            <span id="avg-success-rate" class="value">0</span>%
+                        </div>
+                    </div>
+                    
+                    <div class="stats-list-header">
+                        <h3>問題別統計 (正解率の低い順)</h3>
+                        <button id="reset-data-btn" class="danger-btn text-btn">データをリセット</button>
+                    </div>
+                    
+                    <div id="stats-list" class="stats-list">
+                        <!-- 統計リストがここに生成される -->
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -97,7 +134,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, collection, getDocs, query, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -117,7 +154,7 @@
         const provider = new GoogleAuthProvider();
 
         // Export to window for app.js
-        window.fb = { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp };
+        window.fb = { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, collection, getDocs, query, deleteDoc, writeBatch };
     </script>
 
     <script src="data.js"></script>

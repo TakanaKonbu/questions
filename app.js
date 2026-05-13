@@ -1,4 +1,4 @@
-const { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp } = window.fb;
+const { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, collection, getDocs, query, deleteDoc, writeBatch } = window.fb;
 
 let currentUser = null;
 let currentQuestionStats = null;
@@ -9,6 +9,20 @@ const logoutBtn = document.getElementById('logout-btn');
 const userInfo = document.getElementById('user-info');
 const userPhoto = document.getElementById('user-photo');
 const userName = document.getElementById('user-name');
+const mainNav = document.getElementById('main-nav');
+
+// Navigation
+const navHome = document.getElementById('nav-home');
+const navStats = document.getElementById('nav-stats');
+const homeView = document.getElementById('home-view');
+const statsView = document.getElementById('stats-view');
+const statsBackBtn = document.getElementById('stats-back-btn');
+
+// Dashboard UI Elements
+const statsList = document.getElementById('stats-list');
+const totalAttemptsSpan = document.getElementById('total-attempts');
+const avgSuccessRateSpan = document.getElementById('avg-success-rate');
+const resetDataBtn = document.getElementById('reset-data-btn');
 
 // Result UI Elements
 const correctBtn = document.getElementById('correct-btn');
@@ -18,12 +32,34 @@ const successRateSpan = document.getElementById('success-rate');
 const statCorrectSpan = document.getElementById('stat-correct');
 const statCountSpan = document.getElementById('stat-count');
 
+// --- Navigation Logic ---
+function switchView(viewName) {
+  console.log("Switching to view:", viewName);
+  if (viewName === 'home') {
+    homeView.classList.add('active');
+    statsView.classList.remove('active');
+    navHome.classList.add('active');
+    navStats.classList.remove('active');
+  } else {
+    homeView.classList.remove('active');
+    statsView.classList.add('active');
+    navHome.classList.remove('active');
+    navStats.classList.add('active');
+    openDashboard();
+  }
+}
+
+navHome.addEventListener('click', () => switchView('home'));
+navStats.addEventListener('click', () => switchView('stats'));
+statsBackBtn.addEventListener('click', () => switchView('home'));
+
 // --- Firebase Auth Logic ---
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
     loginBtn.style.display = 'none';
     userInfo.style.display = 'flex';
+    mainNav.style.display = 'flex';
     userPhoto.src = user.photoURL;
     userName.textContent = user.displayName.split(' ')[0];
     updateViewer(); // Refresh to show stats
@@ -31,7 +67,9 @@ onAuthStateChanged(auth, (user) => {
     currentUser = null;
     loginBtn.style.display = 'block';
     userInfo.style.display = 'none';
+    mainNav.style.display = 'none';
     statsBadge.style.display = 'none';
+    switchView('home');
   }
 });
 
@@ -47,6 +85,105 @@ loginBtn.addEventListener('click', async () => {
 logoutBtn.addEventListener('click', () => {
   signOut(auth);
 });
+
+// --- Dashboard Logic ---
+async function openDashboard() {
+  console.log("--- openDashboard Start ---");
+  if (!currentUser) {
+    console.error("No user logged in");
+    return;
+  }
+  
+  statsList.innerHTML = '<div class="loading" style="text-align:center; padding:2rem;">データを取得中...</div>';
+  
+  try {
+    console.log("Fetching stats from Firestore for UID:", currentUser.uid);
+    const q = query(collection(db, "users", currentUser.uid, "question_stats"));
+    const querySnapshot = await getDocs(q);
+    console.log("Query completed. Snapshot size:", querySnapshot.size);
+    
+    const allStats = [];
+    let totalAttempts = 0;
+    let totalCorrect = 0;
+
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      console.log("Row data:", doc.id, data);
+      const id = doc.id.replace('_', '回 問');
+      const rate = data.count > 0 ? ((data.correct / data.count) * 100) : 0;
+      allStats.push({ id, ...data, rate });
+      totalAttempts += data.count;
+      totalCorrect += data.correct;
+    });
+
+    // Sort by rate (ascending)
+    allStats.sort((a, b) => a.rate - b.rate);
+    console.log("Processed stats count:", allStats.length);
+
+    totalAttemptsSpan.textContent = totalAttempts;
+    avgSuccessRateSpan.textContent = totalAttempts > 0 ? ((totalCorrect / totalAttempts) * 100).toFixed(1) : 0;
+
+    if (allStats.length === 0) {
+      console.log("No stats found for user");
+      statsList.innerHTML = '<div class="no-data" style="text-align:center; padding:2rem; color:var(--text-muted);">まだデータがありません。問題を解いて記録しましょう！</div>';
+      return;
+    }
+
+    const html = allStats.map(stat => {
+      let rateClass = 'high-rate';
+      if (stat.rate < 40) rateClass = 'low-rate';
+      else if (stat.rate < 70) rateClass = 'mid-rate';
+
+      return `
+        <div class="stat-item">
+          <div class="stat-info">
+            <span class="stat-q-id">第${stat.id}</span>
+            <span class="stat-details">解答数: ${stat.count}回 / 正解: ${stat.correct}回</span>
+          </div>
+          <div class="stat-result">
+            <span class="stat-percent ${rateClass}">${stat.rate.toFixed(0)}%</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    statsList.innerHTML = html;
+    console.log("Dashboard UI updated. List height:", statsList.offsetHeight, "Item count:", allStats.length);
+    
+    if (statsList.offsetHeight === 0) {
+      console.warn("Warning: statsList has 0 height. Check CSS.");
+    }
+
+  } catch (error) {
+    console.error("Dashboard error:", error);
+    statsList.innerHTML = `<div class="error" style="color:red; padding:2rem;">データの取得に失敗しました。<br>理由: ${error.message}</div>`;
+  }
+}
+
+if (resetDataBtn) {
+  resetDataBtn.addEventListener('click', async () => {
+    if (!currentUser) return;
+    if (!confirm("すべての学習記録を削除します。この操作は取り消せません。よろしいですか？")) return;
+
+    try {
+      const q = query(collection(db, "users", currentUser.uid, "question_stats"));
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      
+      querySnapshot.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      
+      await batch.commit();
+      alert("データを削除しました。");
+      switchView('home');
+      updateViewer();
+    } catch (error) {
+      console.error("Error resetting data:", error);
+      alert("データの削除に失敗しました。");
+    }
+  });
+}
 
 // --- Firestore Stats Logic ---
 async function fetchQuestionStats(year, question) {
