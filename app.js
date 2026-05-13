@@ -86,6 +86,79 @@ logoutBtn.addEventListener('click', () => {
   signOut(auth);
 });
 
+let globalStatsData = [];
+const statsSortSelect = document.getElementById('stats-sort-select');
+
+if (statsSortSelect) {
+  statsSortSelect.addEventListener('change', () => {
+    renderStatsList();
+  });
+}
+
+function findImagePath(year, question) {
+  const subject = subjectSelect.value;
+  const availableImages = appData.images[subject];
+  if (!availableImages) return null;
+  
+  return availableImages.find(img => {
+    const info = getFileInfo(img);
+    return info.year == year && info.question == question;
+  });
+}
+
+window.jumpToQuestion = function(year, question) {
+  const imgFile = findImagePath(year, question);
+  if (imgFile) {
+    const subject = subjectSelect.value;
+    selectedImages = [`img/${subject}/${imgFile}`];
+    currentIndex = 0;
+    updateViewer();
+    switchView('home');
+    viewer.style.display = 'flex';
+    viewer.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    alert(`第${year}回 問${question} の画像データが現在の科目（${subjectSelect.options[subjectSelect.selectedIndex].text}）に見つかりません。`);
+  }
+};
+
+function renderStatsList() {
+  if (globalStatsData.length === 0) {
+    statsList.innerHTML = '<div class="no-data" style="text-align:center; padding:2rem; color:var(--text-muted);">まだデータがありません。問題を解いて記録しましょう！</div>';
+    return;
+  }
+
+  const sortType = statsSortSelect ? statsSortSelect.value : 'rate-asc';
+  
+  const sortedStats = [...globalStatsData].sort((a, b) => {
+    if (sortType === 'rate-asc') return a.rate - b.rate;
+    if (sortType === 'rate-desc') return b.rate - a.rate;
+    if (sortType === 'question') {
+      if (a.year !== b.year) return parseInt(a.year) - parseInt(b.year);
+      return a.question - b.question;
+    }
+  });
+
+  const html = sortedStats.map(stat => {
+    let rateClass = 'high-rate';
+    if (stat.rate < 40) rateClass = 'low-rate';
+    else if (stat.rate < 70) rateClass = 'mid-rate';
+
+    return `
+      <div class="stat-item clickable" onclick="jumpToQuestion('${stat.year}', ${stat.question})">
+        <div class="stat-info">
+          <span class="stat-q-id">第${stat.displayId}</span>
+          <span class="stat-details">解答数: ${stat.count}回 / 正解: ${stat.correct}回</span>
+        </div>
+        <div class="stat-result">
+          <span class="stat-percent ${rateClass}">${stat.rate.toFixed(0)}%</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  statsList.innerHTML = html;
+}
+
 // --- Dashboard Logic ---
 async function openDashboard() {
   console.log("--- openDashboard Start ---");
@@ -102,57 +175,27 @@ async function openDashboard() {
     const querySnapshot = await getDocs(q);
     console.log("Query completed. Snapshot size:", querySnapshot.size);
     
-    const allStats = [];
+    globalStatsData = [];
     let totalAttempts = 0;
     let totalCorrect = 0;
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      console.log("Row data:", doc.id, data);
-      const id = doc.id.replace('_', '回 問');
+      const parts = doc.id.split('_');
+      const year = parts[0];
+      const question = parseInt(parts[1]);
+      const displayId = `${year}回 問${question}`;
+      
       const rate = data.count > 0 ? ((data.correct / data.count) * 100) : 0;
-      allStats.push({ id, ...data, rate });
+      globalStatsData.push({ id: doc.id, year, question, displayId, ...data, rate });
       totalAttempts += data.count;
       totalCorrect += data.correct;
     });
 
-    // Sort by rate (ascending)
-    allStats.sort((a, b) => a.rate - b.rate);
-    console.log("Processed stats count:", allStats.length);
-
     totalAttemptsSpan.textContent = totalAttempts;
     avgSuccessRateSpan.textContent = totalAttempts > 0 ? ((totalCorrect / totalAttempts) * 100).toFixed(1) : 0;
 
-    if (allStats.length === 0) {
-      console.log("No stats found for user");
-      statsList.innerHTML = '<div class="no-data" style="text-align:center; padding:2rem; color:var(--text-muted);">まだデータがありません。問題を解いて記録しましょう！</div>';
-      return;
-    }
-
-    const html = allStats.map(stat => {
-      let rateClass = 'high-rate';
-      if (stat.rate < 40) rateClass = 'low-rate';
-      else if (stat.rate < 70) rateClass = 'mid-rate';
-
-      return `
-        <div class="stat-item">
-          <div class="stat-info">
-            <span class="stat-q-id">第${stat.id}</span>
-            <span class="stat-details">解答数: ${stat.count}回 / 正解: ${stat.correct}回</span>
-          </div>
-          <div class="stat-result">
-            <span class="stat-percent ${rateClass}">${stat.rate.toFixed(0)}%</span>
-          </div>
-        </div>
-      `;
-    }).join('');
-    
-    statsList.innerHTML = html;
-    console.log("Dashboard UI updated. List height:", statsList.offsetHeight, "Item count:", allStats.length);
-    
-    if (statsList.offsetHeight === 0) {
-      console.warn("Warning: statsList has 0 height. Check CSS.");
-    }
+    renderStatsList();
 
   } catch (error) {
     console.error("Dashboard error:", error);

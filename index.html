@@ -112,7 +112,14 @@
                     </div>
                     
                     <div class="stats-list-header">
-                        <h3>問題別統計 (正解率の低い順)</h3>
+                        <div class="sort-controls">
+                            <label for="stats-sort-select">並び替え:</label>
+                            <select id="stats-sort-select" class="small-select">
+                                <option value="rate-asc">不正解率順 (苦手な順)</option>
+                                <option value="rate-desc">正解率順 (得意な順)</option>
+                                <option value="question">問題順</option>
+                            </select>
+                        </div>
                         <button id="reset-data-btn" class="danger-btn text-btn">データをリセット</button>
                     </div>
                     

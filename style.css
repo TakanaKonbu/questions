@@ -669,12 +669,21 @@ button:active {
   background: white;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-item.clickable {
+  cursor: pointer;
 }
 
 .stat-item:hover {
   transform: translateX(4px);
   border-color: var(--primary);
+}
+
+.stat-item.clickable:hover {
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+  transform: translateX(6px);
 }
 
 .stat-info {
