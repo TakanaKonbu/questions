@@ -15,7 +15,17 @@
 <body>
     <div class="container">
         <header>
-            <h1>過去問ジェネレーター</h1>
+            <div class="header-top">
+                <h1>過去問ジェネレーター</h1>
+                <div id="auth-container">
+                    <button id="login-btn" class="auth-btn">Googleでログイン</button>
+                    <div id="user-info" style="display: none;">
+                        <img id="user-photo" src="" alt="User">
+                        <span id="user-name"></span>
+                        <button id="logout-btn" class="text-btn">ログアウト</button>
+                    </div>
+                </div>
+            </div>
         </header>
 
         <main>
@@ -39,6 +49,10 @@
             <div id="viewer" class="viewer" style="display: none;">
                 <div class="viewer-header">
                     <span id="status-text">1 / 15</span>
+                    <div id="question-stats" class="stats-badge" style="display: none;">
+                        正解率: <span id="success-rate">--</span>% 
+                        (<span id="stat-correct">0</span>/<span id="stat-count">0</span>)
+                    </div>
                 </div>
                 
                 <div class="img-container">
@@ -46,6 +60,10 @@
                 </div>
                 
                 <div class="explanation-section">
+                    <div class="result-buttons">
+                        <button id="correct-btn" class="result-btn correct">正解</button>
+                        <button id="incorrect-btn" class="result-btn incorrect">不正解</button>
+                    </div>
                     <button id="open-explanation-btn" class="secondary-btn">解説を見る</button>
                 </div>
 
@@ -75,7 +93,34 @@
         <img class="modal-content" id="full-img">
     </div>
 
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyDgNGO3AsaXYT94uED_u5-D9rymL4JEFAg",
+          authDomain: "weather-question-656be.firebaseapp.com",
+          projectId: "weather-question-656be",
+          storageBucket: "weather-question-656be.firebasestorage.app",
+          messagingSenderId: "615941104665",
+          appId: "1:615941104665:web:2e2c0fdfe512023b173688",
+          measurementId: "G-5GZPJ1F7EM"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        // Export to window for app.js
+        window.fb = { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp };
+    </script>
+
     <script src="data.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js" type="module"></script>
 </body>
 </html>

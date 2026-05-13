@@ -1,3 +1,121 @@
+const { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp } = window.fb;
+
+let currentUser = null;
+let currentQuestionStats = null;
+
+// Auth UI Elements
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const userInfo = document.getElementById('user-info');
+const userPhoto = document.getElementById('user-photo');
+const userName = document.getElementById('user-name');
+
+// Result UI Elements
+const correctBtn = document.getElementById('correct-btn');
+const incorrectBtn = document.getElementById('incorrect-btn');
+const statsBadge = document.getElementById('question-stats');
+const successRateSpan = document.getElementById('success-rate');
+const statCorrectSpan = document.getElementById('stat-correct');
+const statCountSpan = document.getElementById('stat-count');
+
+// --- Firebase Auth Logic ---
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    loginBtn.style.display = 'none';
+    userInfo.style.display = 'flex';
+    userPhoto.src = user.photoURL;
+    userName.textContent = user.displayName.split(' ')[0];
+    updateViewer(); // Refresh to show stats
+  } else {
+    currentUser = null;
+    loginBtn.style.display = 'block';
+    userInfo.style.display = 'none';
+    statsBadge.style.display = 'none';
+  }
+});
+
+loginBtn.addEventListener('click', async () => {
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    console.error("Login failed:", error);
+    alert("ログインに失敗しました。");
+  }
+});
+
+logoutBtn.addEventListener('click', () => {
+  signOut(auth);
+});
+
+// --- Firestore Stats Logic ---
+async function fetchQuestionStats(year, question) {
+  if (!currentUser) return null;
+  const docId = `${year}_${question}`;
+  const docRef = doc(db, "users", currentUser.uid, "question_stats", docId);
+  const docSnap = await getDoc(docRef);
+  
+  if (docSnap.exists()) {
+    return docSnap.data();
+  }
+  return { correct: 0, count: 0 };
+}
+
+async function recordResult(isCorrect) {
+  if (!currentUser) {
+    alert("学習記録を保存するにはログインが必要です。");
+    return;
+  }
+
+  const currentPath = selectedImages[currentIndex];
+  const { year, question } = getFileInfo(currentPath);
+  const docId = `${year}_${question}`;
+  const docRef = doc(db, "users", currentUser.uid, "question_stats", docId);
+
+  const btn = isCorrect ? correctBtn : incorrectBtn;
+  btn.classList.add('active');
+  setTimeout(() => btn.classList.remove('active'), 200);
+
+  try {
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      await setDoc(docRef, {
+        correct: isCorrect ? 1 : 0,
+        count: 1,
+        lastAttemptAt: serverTimestamp()
+      });
+    } else {
+      await updateDoc(docRef, {
+        correct: increment(isCorrect ? 1 : 0),
+        count: increment(1),
+        lastAttemptAt: serverTimestamp()
+      });
+    }
+    // Update UI immediately
+    const updatedStats = await fetchQuestionStats(year, question);
+    displayStats(updatedStats);
+  } catch (error) {
+    console.error("Error recording result:", error);
+  }
+}
+
+function displayStats(stats) {
+  if (!stats || stats.count === 0) {
+    statsBadge.style.display = 'none';
+    return;
+  }
+  
+  const rate = ((stats.correct / stats.count) * 100).toFixed(0);
+  successRateSpan.textContent = rate;
+  statCorrectSpan.textContent = stats.correct;
+  statCountSpan.textContent = stats.count;
+  statsBadge.style.display = 'flex';
+}
+
+correctBtn.addEventListener('click', () => recordResult(true));
+incorrectBtn.addEventListener('click', () => recordResult(false));
+
+// --- Original App Logic ---
 let appData = { images: { ippan: [] }, explanations: { ippan: {} } };
 let selectedImages = [];
 let currentIndex = 0;
@@ -102,7 +220,6 @@ async function fetchExplanation(year, question) {
   const subject = subjectSelect.value;
   const yearData = appData.explanations[subject]?.[year];
   if (yearData && yearData[question]) {
-    // 採点用データ（オブジェクト）か以前の形式（テキスト）かチェック
     const data = yearData[question];
     return typeof data === 'object' ? data.text : data;
   }
@@ -119,6 +236,14 @@ async function updateViewer() {
   const { year, question } = getFileInfo(currentPath);
 
   document.getElementById('modal-title').textContent = `第${year}回 問${question} 解説`;
+
+  // Fetch and display stats
+  if (currentUser) {
+    const stats = await fetchQuestionStats(year, question);
+    displayStats(stats);
+  } else {
+    statsBadge.style.display = 'none';
+  }
 
   const explanation = await fetchExplanation(year, question);
   

@@ -451,21 +451,149 @@ button:active {
   cursor: zoom-in;
 }
 
+/* --- Firebase & Study Records --- */
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+#auth-container {
+  display: flex;
+  align-items: center;
+}
+
+.auth-btn {
+  background: white;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.auth-btn:hover {
+  background: var(--bg);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+#user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: white;
+  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+#user-photo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+#user-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.text-btn {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.text-btn:hover {
+  background: transparent;
+  color: var(--primary);
+  box-shadow: none;
+}
+
+/* Stats Badge */
+.viewer-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stats-badge {
+  background: var(--bg);
+  padding: 0.4rem 0.8rem;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+#success-rate {
+  color: var(--primary);
+}
+
+/* Result Buttons */
+.result-buttons {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.result-btn {
+  flex: 1;
+  padding: 0.8rem;
+  font-size: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.result-btn.correct {
+  background-color: hsl(142, 70%, 45%);
+}
+
+.result-btn.correct:hover {
+  background-color: hsl(142, 70%, 40%);
+  box-shadow: 0 4px 12px hsla(142, 70%, 45%, 0.3);
+}
+
+.result-btn.incorrect {
+  background-color: hsl(0, 70%, 60%);
+}
+
+.result-btn.incorrect:hover {
+  background-color: hsl(0, 70%, 55%);
+  box-shadow: 0 4px 12px hsla(0, 70%, 60%, 0.3);
+}
+
+.result-btn.active {
+  transform: scale(0.95);
+  filter: brightness(1.2);
+  outline: 3px solid white;
+  outline-offset: -5px;
+}
+
 @media (max-width: 600px) {
-  body {
-    padding: 1rem;
+  .header-top {
+    justify-content: center;
+    text-align: center;
   }
   
-  .controls {
-    flex-direction: column;
-  }
-  
-  h1 {
-    font-size: 2rem;
-  }
-  
-  .close-modal {
-    top: 10px;
-    right: 10px;
+  .auth-btn {
+    width: 100%;
   }
 }
