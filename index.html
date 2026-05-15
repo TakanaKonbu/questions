@@ -42,13 +42,32 @@
                     <option value="jitsugi1">実技1</option>
                     <option value="jitsugi2">実技2</option>
                 </select>
-                <div class="test-settings">
-                    <label for="question-count">問題数: <span id="count-display">5</span>問</label>
-                    <input type="range" id="question-count" min="1" max="30" value="5">
-                </div>
                 <div class="button-group">
                     <button id="start-btn">過去問作成 (15問)</button>
                     <button id="simple-test-btn" class="accent-btn">簡易テスト作成</button>
+                </div>
+            </div>
+
+            <!-- Simple Test Settings Modal -->
+            <div id="simple-test-modal" class="modal">
+                <div class="modal-container" style="max-width: 450px; height: auto;">
+                    <div class="modal-header">
+                        <h2>簡易テスト設定</h2>
+                        <span class="close-simple-test" style="cursor:pointer; font-size: 1.5rem;">&times;</span>
+                    </div>
+                    <div class="modal-body" style="padding: 2rem; display: flex; flex-direction: column; gap: 2rem;">
+                        <div class="test-settings">
+                            <label for="modal-genre-select">ジャンル絞り込み:</label>
+                            <select id="modal-genre-select" style="width: 100%;">
+                                <option value="all">全範囲</option>
+                            </select>
+                        </div>
+                        <div class="test-settings">
+                            <label for="modal-question-count">問題数: <span id="modal-count-display">5</span>問</label>
+                            <input type="range" id="modal-question-count" min="1" max="30" value="5" style="width: 100%;">
+                        </div>
+                        <button id="modal-start-test-btn" class="accent-btn" style="width: 100%; padding: 1rem;">テスト開始</button>
+                    </div>
                 </div>
             </div>
 

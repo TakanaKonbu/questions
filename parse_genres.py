@@ -1,0 +1,158 @@
+import json
+import re
+
+text = """
+大気の構造
+
+第56回 問1（気圧高度分布・大気質量）
+第57回 問1（中層大気の気温・等圧面）
+第58回 問1（鉛直構造・化学組成）
+第59回 問1（構造関連）
+第60回 問1（高度80km以下の成分）
+第62回 問1（鉛直構造）
+第63回 問1（地球大気の組成）
+第64回 問1（地球大気の鉛直構造）
+第65回 問1（地球大気の鉛直構造・オゾン）
+第65回 問2（静力学平衡・状態方程式）
+
+大気の熱力学
+
+第56回 問2（LCL・持ち上げ凝結高度）
+第56回 問3（水蒸気圧・混合比）
+第57回 問3（空気塊の上昇・気温減率）
+第57回 問4（温度・水蒸気圧・エマグラム）
+第58回 問2（湿潤空気の水蒸気量）
+第58回 問3（混合比）
+第59回 問2〜問5（熱力学中心）
+第60回 問2〜問3（熱力学）
+第61回 問2〜問4（熱力学複数）
+第62回 問2〜問5（熱力学・降水関連）
+第63回 問2（比湿）、問3（フェーン）
+第64回 問2（相対湿度）、問3（湿潤空気・湿球温度など）
+第65回 問3（仮温度・露点・相当温位）
+
+降水過程
+
+第56回 問4（雲粒の成長）
+第57回 問5（凝結核・氷晶核）
+第58回 問4（氷粒子の成長）
+第61回 問5〜問6（降水過程）
+第62回 問6〜問7（降水過程）
+第64回 問4（氷粒子・雪片）
+第65回 問4（暖かい雨の雲粒・降水粒子）
+
+大気における放射
+
+第56回 問5（温室効果原理）
+第57回 問6（緯度と日射量）
+第61回 問7（放射関連）
+第64回 問5（太陽放射）
+第65回 問5（電磁波の波長と散乱）
+
+大気の力学
+
+第56回 問6（地衡風）
+第56回 問7（温度風）
+第57回 問7（収束発散・鉛直風速）
+第58回 問6〜問7（力学）
+第59回 問6〜問8（力学）
+第60回 問5〜問7（力学）
+第61回 問8〜問10（力学）
+第62回 問8〜問10（力学）
+第63回 問6〜問7（渦度・上昇流）
+第64回 問6（温度風）、問7（摩擦効果）
+第65回 問6（慣性振動）、問7（傾度風）
+
+気象現象
+
+第56回 問8（発達期温帯低気圧）
+第56回 問9（積乱雲）
+第56回 問10（成層圏オゾン）
+第57回 問9（ハドレー循環）、問10（ダウンバースト）
+第58回 問8〜問10（現象）
+第59回 問9〜問10（現象）
+第60回 問8〜問10（現象）
+第61回 問11（現象）
+第62回 問11（現象）
+第63回 問8〜問10（ジェット・台風・温度風）
+第64回 問8（熱輸送）、問9（ガストフロント）、問10（成層圏）
+第65回 問8（温帯低気圧）、問9〜問10（現象）
+
+気候の変動
+
+第56回 問11（エルニーニョ天候）
+第57回 問11（地球温暖化）
+第61回 問12（気候変動）
+第63回 問11（エルニーニョ）
+第64回 問11（日本域気候長期変動）
+第65回 問11（気候変動）
+
+気象業務法その他の気象業務に関する法規
+
+第56回 問12〜15（罰則・予報士規定・観測・警報）
+第57回 問12〜15（法規複数）
+第58回 問12〜15（法規）
+第59回 問12〜15（法規）
+第60回 問12〜15（法規）
+第61回 問13〜15（法規）
+第62回 問12〜15（法規）
+第63回 問12〜15（許可・予報士・警報・災害法）
+第64回 問12〜15（許可要件・予報士・検定・災害法）
+第65回 問12〜15（許可・予報士・観測・災害法）
+"""
+
+def parse_text(txt):
+    genres = {}
+    current_genre = None
+    lines = txt.strip().split('\n')
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Check if it's a genre header (not starting with 第)
+        if not line.startswith('第'):
+            current_genre = line
+            if current_genre not in genres:
+                genres[current_genre] = []
+            continue
+        
+        if not current_genre:
+            continue
+            
+        # Extract year
+        year_match = re.search(r'第(\d+)回', line)
+        if not year_match:
+            continue
+        year = year_match.group(1)
+        
+        # Skip year 65
+        if year == '65':
+            continue
+            
+        # Find all question patterns: 問X, 問X〜Y, 問X〜問Y
+        # We also need to handle multiple patterns in one line
+        
+        # First, remove everything in parentheses to simplify
+        clean_line = re.sub(r'（.*?）', '', line)
+        
+        # Find all numeric patterns after "問"
+        # Match groups of "問X〜Y" or just "問X"
+        q_patterns = re.findall(r'問(\d+)(?:〜問?(\d+))?', clean_line)
+        
+        for start_q, end_q in q_patterns:
+            start = int(start_q)
+            end = int(end_q) if end_q else start
+            for q in range(start, end + 1):
+                q_id = f"{year}_{q}"
+                if q_id not in genres[current_genre]:
+                    genres[current_genre].append(q_id)
+                    
+    return {"ippan": genres}
+
+parsed_data = parse_text(text)
+with open('genres.json', 'w', encoding='utf-8') as f:
+    json.dump(parsed_data, f, ensure_ascii=False, indent=2)
+
+print("genres.json created successfully!")

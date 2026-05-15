@@ -4,7 +4,8 @@ import re
 
 data = {
     "images": {"ippan": []},
-    "explanations": {"ippan": {}}
+    "explanations": {"ippan": {}},
+    "genres": {}
 }
 
 # Process images
@@ -36,6 +37,11 @@ if os.path.exists(kaisetu_dir):
                         if q_match:
                             question = str(int(q_match.group(1)))
                             data["explanations"]["ippan"][year][question] = part.strip()
+
+# Process genres
+if os.path.exists('genres.json'):
+    with open('genres.json', 'r', encoding='utf-8') as f:
+        data["genres"] = json.load(f)
 
 # Write to data.js
 with open('data.js', 'w', encoding='utf-8') as f:
