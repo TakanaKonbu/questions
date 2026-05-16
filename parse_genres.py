@@ -110,37 +110,16 @@ def parse_text(txt):
         line = line.strip()
         if not line:
             continue
-        
-        # Check if it's a genre header (not starting with 第)
         if not line.startswith('第'):
             current_genre = line
-            if current_genre not in genres:
-                genres[current_genre] = []
+            if current_genre not in genres: genres[current_genre] = []
             continue
-        
-        if not current_genre:
-            continue
-            
-        # Extract year
+        if not current_genre: continue
         year_match = re.search(r'第(\d+)回', line)
-        if not year_match:
-            continue
+        if not year_match: continue
         year = year_match.group(1)
-        
-        # Skip year 65
-        if year == '65':
-            continue
-            
-        # Find all question patterns: 問X, 問X〜Y, 問X〜問Y
-        # We also need to handle multiple patterns in one line
-        
-        # First, remove everything in parentheses to simplify
         clean_line = re.sub(r'（.*?）', '', line)
-        
-        # Find all numeric patterns after "問"
-        # Match groups of "問X〜Y" or just "問X"
         q_patterns = re.findall(r'問(\d+)(?:〜問?(\d+))?', clean_line)
-        
         for start_q, end_q in q_patterns:
             start = int(start_q)
             end = int(end_q) if end_q else start
@@ -148,11 +127,10 @@ def parse_text(txt):
                 q_id = f"{year}_{q}"
                 if q_id not in genres[current_genre]:
                     genres[current_genre].append(q_id)
-                    
     return {"ippan": genres}
 
 parsed_data = parse_text(text)
 with open('genres.json', 'w', encoding='utf-8') as f:
     json.dump(parsed_data, f, ensure_ascii=False, indent=2)
 
-print("genres.json created successfully!")
+print("genres.json updated with 65th exam data!")
