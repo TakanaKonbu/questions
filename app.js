@@ -341,6 +341,9 @@ correctBtn.addEventListener('click', () => recordResult(true));
 incorrectBtn.addEventListener('click', () => recordResult(false));
 
 // --- Dashboard ---
+const genreStatsSection = document.getElementById('genre-stats-section');
+const genreStatsList = document.getElementById('genre-stats-list');
+
 async function openDashboard() {
   if (!currentUser) return;
   statsList.innerHTML = '<div style="text-align:center; padding:2rem;">取得中...</div>';
@@ -362,8 +365,70 @@ async function openDashboard() {
 
     totalAttemptsSpan.textContent = totalAttempts;
     avgSuccessRateSpan.textContent = totalAttempts > 0 ? ((totalCorrect / totalAttempts) * 100).toFixed(1) : 0;
+    
+    renderGenreStats();
     renderStatsList();
   } catch (e) { console.error(e); }
+}
+
+function renderGenreStats() {
+  const subject = subjectSelect.value;
+  const genres = appData.genres && appData.genres[subject];
+  
+  if (!genres || Object.keys(genres).length === 0 || globalStatsData.length === 0) {
+    if (genreStatsSection) genreStatsSection.style.display = 'none';
+    return;
+  }
+  
+  if (genreStatsSection) genreStatsSection.style.display = 'block';
+  let html = '';
+  
+  for (const genreName in genres) {
+    const questionIds = genres[genreName];
+    let genreCount = 0;
+    let genreCorrect = 0;
+    
+    questionIds.forEach(qId => {
+      const stat = globalStatsData.find(s => s.id === qId);
+      if (stat) {
+        genreCount += stat.count;
+        genreCorrect += stat.correct;
+      }
+    });
+    
+    let rate = 0;
+    let rateClass = 'low-rate'; // default or unattempted
+    let detailsText = '未学習';
+    
+    if (genreCount > 0) {
+      rate = (genreCorrect / genreCount) * 100;
+      detailsText = `${genreCount}問中 ${genreCorrect}問正解`;
+      if (rate >= 70) rateClass = 'high-rate';
+      else if (rate >= 40) rateClass = 'mid-rate';
+    } else {
+       rateClass = ''; // Unstyled for unattempted
+    }
+    
+    let fillStyle = rateClass === 'high-rate' ? 'background-color: var(--success);' :
+                    rateClass === 'mid-rate' ? 'background-color: var(--warning);' :
+                    rateClass === 'low-rate' ? 'background-color: var(--danger);' :
+                    'background-color: var(--border);';
+                    
+    html += `
+      <div class="genre-stat-card">
+        <div class="genre-stat-header">
+          <span class="genre-stat-name">${genreName}</span>
+          <span class="genre-stat-rate ${rateClass}">${genreCount > 0 ? rate.toFixed(0) + '%' : '--%'}</span>
+        </div>
+        <div class="genre-progress-bg">
+          <div class="genre-progress-fill" style="width: ${rate}%; ${fillStyle}"></div>
+        </div>
+        <div class="genre-stat-details">${detailsText}</div>
+      </div>
+    `;
+  }
+  
+  if (genreStatsList) genreStatsList.innerHTML = html;
 }
 
 function renderStatsList() {
