@@ -899,3 +899,117 @@ button:active {
   border-radius: 4px;
   transition: width 0.5s ease-out;
 }
+
+/* --- Test Result Modal & View Results Btn --- */
+#view-results-btn {
+  margin-top: 1rem;
+  padding: 0.9rem;
+  font-size: 1.1rem;
+  background: linear-gradient(135deg, var(--primary), #818cf8);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+#view-results-btn:hover {
+  background: linear-gradient(135deg, var(--primary-hover), #6366f1);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+}
+
+#result-modal .modal-container {
+  width: 95%;
+  max-width: 500px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  cursor: default;
+  animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.close-result {
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg);
+  transition: background 0.2s, color 0.2s;
+}
+
+.close-result:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+/* Result Modal List Items */
+#result-list .stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.5rem;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+#result-list .stat-item:hover {
+  transform: translateX(4px);
+  border-color: var(--primary);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+#result-list .stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+#result-list .stat-q-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+#result-list .stat-q-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+#result-list .result-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.result-badge.correct {
+  background-color: hsla(142, 70%, 45%, 0.15);
+  color: hsl(142, 70%, 35%);
+}
+
+.result-badge.incorrect {
+  background-color: hsla(0, 70%, 60%, 0.15);
+  color: hsl(0, 70%, 50%);
+}
+
+.result-badge.unanswered {
+  background-color: hsl(220, 20%, 90%);
+  color: var(--text-muted);
+}
+
+.result-btn.selected {
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px currentColor;
+  transform: scale(0.98);
+}
+

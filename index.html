@@ -108,6 +108,7 @@
                     <button id="prev-btn">前へ</button>
                     <button id="next-btn" class="primary-nav">次へ</button>
                 </div>
+                <button id="view-results-btn" class="accent-btn" style="width: 100%; margin-top: 1rem; display: none;">回答結果を見る</button>
             </div>
             </div> <!-- /#home-view の閉じタグを追加 -->
 
@@ -155,6 +156,33 @@
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Test Result Modal -->
+    <div id="result-modal" class="modal">
+        <div class="modal-container" style="max-width: 500px; height: 80vh;">
+            <div class="modal-header">
+                <h2>回答結果</h2>
+                <span class="close-result" style="cursor:pointer; font-size: 1.5rem;">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto;">
+                <div class="result-score-container" style="text-align: center; padding: 1.5rem; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border);">
+                    <span style="font-size: 0.9rem; color: var(--text-muted); display: block;">得点</span>
+                    <span id="result-score" style="font-size: 3rem; font-weight: 800; color: var(--primary);">0 / 15</span>
+                    <span id="result-percent" style="font-size: 1.2rem; font-weight: 700; display: block; margin-top: 0.5rem; color: var(--text-muted);">0%</span>
+                </div>
+                
+                <div style="font-weight: 600; font-size: 0.95rem;">問題ごとの結果 (クリックで解説を表示)</div>
+                <div id="result-list" class="stats-list" style="flex: 1; overflow-y: auto; min-height: 200px;">
+                    <!-- 各問題の正誤一覧がここに生成される -->
+                </div>
+                
+                <div style="display: flex; gap: 1rem; flex-shrink: 0;">
+                    <button id="result-review-btn" class="secondary-btn" style="flex: 1;">問題を復習する</button>
+                    <button id="result-home-btn" class="primary-nav" style="flex: 1;">ホームに戻る</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Fullscreen Modal for Image -->

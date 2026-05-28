@@ -7,6 +7,8 @@ let appData = { images: { ippan: [] }, explanations: { ippan: {} }, genres: {} }
 let selectedImages = [];
 let currentIndex = 0;
 let globalStatsData = [];
+let isExamMode = false;
+let examResults = [];
 
 // --- DOM Elements ---
 // Auth
@@ -63,6 +65,16 @@ const modalQuestionCount = document.getElementById('modal-question-count');
 const modalCountDisplay = document.getElementById('modal-count-display');
 const modalStartTestBtn = document.getElementById('modal-start-test-btn');
 const closeSimpleTest = document.querySelector('.close-simple-test');
+
+// Test Results DOM Elements
+const viewResultsBtn = document.getElementById('view-results-btn');
+const resultModal = document.getElementById('result-modal');
+const closeResult = document.querySelector('.close-result');
+const resultScore = document.getElementById('result-score');
+const resultPercent = document.getElementById('result-percent');
+const resultList = document.getElementById('result-list');
+const resultReviewBtn = document.getElementById('result-review-btn');
+const resultHomeBtn = document.getElementById('result-home-btn');
 
 // --- Navigation Logic ---
 function switchView(viewName) {
@@ -140,6 +152,21 @@ if (modalStartTestBtn) {
   });
 }
 
+// Test Results Event Listeners
+if (viewResultsBtn) viewResultsBtn.addEventListener('click', showExamResults);
+if (closeResult) closeResult.addEventListener('click', () => { resultModal.style.display = 'none'; });
+if (resultModal) {
+  resultModal.addEventListener('click', (e) => { if (e.target === resultModal) resultModal.style.display = 'none'; });
+}
+if (resultReviewBtn) resultReviewBtn.addEventListener('click', () => { resultModal.style.display = 'none'; });
+if (resultHomeBtn) {
+  resultHomeBtn.addEventListener('click', () => {
+    resultModal.style.display = 'none';
+    switchView('home');
+    viewer.style.display = 'none';
+  });
+}
+
 // --- Firebase Auth Logic ---
 onAuthStateChanged(auth, (user) => {
   if (user) {
@@ -208,6 +235,9 @@ function generateExam() {
     }
   }
   currentIndex = 0;
+  isExamMode = true;
+  examResults = Array(15).fill(null);
+  if (viewResultsBtn) viewResultsBtn.style.display = 'block';
   updateViewer();
   viewer.style.display = 'flex';
   viewer.scrollIntoView({ behavior: 'smooth' });
@@ -231,6 +261,9 @@ function generateSimpleTest() {
 
   selectedImages = [...availableImages].sort(() => 0.5 - Math.random()).slice(0, count).map(img => `img/${subject}/${img}`);
   currentIndex = 0;
+  isExamMode = false;
+  examResults = [];
+  if (viewResultsBtn) viewResultsBtn.style.display = 'none';
   updateViewer();
   viewer.style.display = 'flex';
   viewer.scrollIntoView({ behavior: 'smooth' });
@@ -255,10 +288,14 @@ async function updateViewer() {
   const { year, question } = getFileInfo(currentPath);
   document.getElementById('modal-title').textContent = `第${year}回 問${question} 解説`;
 
-  if (currentUser) {
+  if (currentUser && !isExamMode) {
     const stats = await fetchQuestionStats(year, question);
     displayStats(stats);
+  } else {
+    statsBadge.style.display = 'none';
   }
+
+  updateExamButtonStyles();
 
   const explanation = await fetchExplanation(year, question);
   let mdText = explanation.replace(/> \[!(\w+)\]\n((?:> .*\n?)+)/gim, (m, type, content) => {
@@ -310,12 +347,19 @@ async function fetchQuestionStats(year, question) {
 }
 
 async function recordResult(isCorrect) {
-  if (!currentUser) { alert("ログインが必要です。"); return; }
-  const { year, question } = getFileInfo(selectedImages[currentIndex]);
-  const docRef = doc(db, "users", currentUser.uid, "question_stats", `${year}_${question}`);
   const btn = isCorrect ? correctBtn : incorrectBtn;
   btn.classList.add('active');
   setTimeout(() => btn.classList.remove('active'), 200);
+
+  if (isExamMode) {
+    examResults[currentIndex] = isCorrect;
+    updateExamButtonStyles();
+  }
+
+  if (!currentUser) { return; }
+
+  const { year, question } = getFileInfo(selectedImages[currentIndex]);
+  const docRef = doc(db, "users", currentUser.uid, "question_stats", `${year}_${question}`);
 
   try {
     const snap = await getDoc(docRef);
@@ -483,3 +527,82 @@ async function loadDataFromStorage() {
 
 loadDataFromStorage();
 updateGenreSelect();
+
+// --- Test Results Helpers ---
+function updateExamButtonStyles() {
+  correctBtn.style.opacity = '1';
+  incorrectBtn.style.opacity = '1';
+  correctBtn.classList.remove('selected');
+  incorrectBtn.classList.remove('selected');
+
+  if (isExamMode && examResults[currentIndex] !== null) {
+    const isCorrect = examResults[currentIndex];
+    if (isCorrect) {
+      correctBtn.classList.add('selected');
+      incorrectBtn.style.opacity = '0.4';
+    } else {
+      incorrectBtn.classList.add('selected');
+      correctBtn.style.opacity = '0.4';
+    }
+  }
+}
+
+function showExamResults() {
+  if (!isExamMode || selectedImages.length === 0) return;
+
+  const unansweredCount = examResults.filter(r => r === null).length;
+  if (unansweredCount > 0) {
+    if (!confirm(`未解答の問題が ${unansweredCount} 問あります。結果を表示しますか？`)) {
+      return;
+    }
+  }
+
+  const correctCount = examResults.filter(r => r === true).length;
+  const totalCount = selectedImages.length;
+  const percentage = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+
+  resultScore.textContent = `${correctCount} / ${totalCount}`;
+  resultPercent.textContent = `正解率 ${percentage}%`;
+
+  resultList.innerHTML = selectedImages.map((path, idx) => {
+    const { year, question } = getFileInfo(path);
+    const result = examResults[idx];
+    let badgeClass = 'unanswered';
+    let badgeText = '未解答';
+
+    if (result === true) {
+      badgeClass = 'correct';
+      badgeText = '正解';
+    } else if (result === false) {
+      badgeClass = 'incorrect';
+      badgeText = '不正解';
+    }
+
+    return `
+      <div class="stat-item clickable" onclick="openExamResultExplanation(${idx})">
+        <div class="stat-info">
+          <span class="stat-q-label">問${idx + 1}：第${year}回 問${question}</span>
+          <span class="stat-q-sub">クリックで解説を表示</span>
+        </div>
+        <div class="stat-result">
+          <span class="result-badge ${badgeClass}">${badgeText}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  resultModal.style.display = 'flex';
+}
+
+window.openExamResultExplanation = async function(idx) {
+  if (idx < 0 || idx >= selectedImages.length) return;
+
+  // 該当問題へ移動
+  currentIndex = idx;
+  await updateViewer();
+
+  // 結果モーダルを閉じ、解説モーダルを開く
+  resultModal.style.display = 'none';
+  explanationModal.style.display = 'flex';
+  explanationContent.scrollTop = 0;
+};
