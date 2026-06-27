@@ -3,40 +3,42 @@ import json
 import re
 
 data = {
-    "images": {"ippan": []},
-    "explanations": {"ippan": {}},
+    "images": {"ippan": [], "senmon": []},
+    "explanations": {"ippan": {}, "senmon": {}},
     "genres": {}
 }
 
-# Process images
-img_dir = "img/ippan"
-if os.path.exists(img_dir):
-    images = [f for f in os.listdir(img_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-    data["images"]["ippan"] = sorted(images)
-
-# Process explanations
-kaisetu_dir = "kaisetu/ippan"
-if os.path.exists(kaisetu_dir):
-    for root, _, files in os.walk(kaisetu_dir):
-        for file in files:
-            if file.endswith('.md'):
-                match = re.search(r'(\d+)\.md', file)
-                if match:
-                    year = match.group(1)
-                    
-                    with open(os.path.join(root, file), 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    
-                    parts = re.split(r'\n(?=# 問\d+)', '\n' + content)
-                    
-                    if year not in data["explanations"]["ippan"]:
-                        data["explanations"]["ippan"][year] = {}
-                    
-                    for part in parts:
-                        q_match = re.search(r'^# 問(\d+)', part.strip())
-                        if q_match:
-                            question = str(int(q_match.group(1)))
-                            data["explanations"]["ippan"][year][question] = part.strip()
+# Process images and explanations for both subjects
+for subject in ["ippan", "senmon"]:
+    # Process images
+    img_dir = f"img/{subject}"
+    if os.path.exists(img_dir):
+        images = [f for f in os.listdir(img_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        data["images"][subject] = sorted(images)
+    
+    # Process explanations
+    kaisetu_dir = f"kaisetu/{subject}"
+    if os.path.exists(kaisetu_dir):
+        for root, _, files in os.walk(kaisetu_dir):
+            for file in files:
+                if file.endswith('.md'):
+                    match = re.search(r'(\d+)\.md', file)
+                    if match:
+                        year = match.group(1)
+                        
+                        with open(os.path.join(root, file), 'r', encoding='utf-8') as f:
+                            content = f.read()
+                        
+                        parts = re.split(r'\n(?=# 問\d+)', '\n' + content)
+                        
+                        if year not in data["explanations"][subject]:
+                            data["explanations"][subject][year] = {}
+                        
+                        for part in parts:
+                            q_match = re.search(r'^# 問(\d+)', part.strip())
+                            if q_match:
+                                question = str(int(q_match.group(1)))
+                                data["explanations"][subject][year][question] = part.strip()
 
 # Process genres
 if os.path.exists('genres.json'):

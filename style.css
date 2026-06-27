@@ -179,17 +179,24 @@ button:active {
   border-radius: 8px;
   overflow: hidden;
   display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: center;
   border: 1px solid var(--border);
-  min-height: 200px; /* Optional: placeholder height */
+  min-height: 200px;
+  gap: 12px;
+  padding: 12px;
 }
 
 .img-container img {
-  width: 100%;
+  max-width: 100%;
   height: auto;
+  flex: 1 1 300px;
+  object-fit: contain;
   display: block;
   transition: opacity 0.3s ease;
+  cursor: pointer;
 }
 
 .explanation-section {

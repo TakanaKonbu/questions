@@ -3,7 +3,8 @@ const { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, g
 // --- Global State ---
 let currentUser = null;
 let currentQuestionStats = null;
-let appData = { images: { ippan: [] }, explanations: { ippan: {} }, genres: {} };
+let appData = { images: { ippan: [], senmon: [] }, explanations: { ippan: {}, senmon: {} }, genres: {} };
+let groupedQuestions = { ippan: {}, senmon: {} };
 let selectedImages = [];
 let currentIndex = 0;
 let globalStatsData = [];
@@ -32,6 +33,7 @@ const totalAttemptsSpan = document.getElementById('total-attempts');
 const avgSuccessRateSpan = document.getElementById('avg-success-rate');
 const resetDataBtn = document.getElementById('reset-data-btn');
 const statsSortSelect = document.getElementById('stats-sort-select');
+const statsSubjectSelect = document.getElementById('stats-subject-select');
 
 // Viewer
 const viewer = document.getElementById('viewer');
@@ -120,7 +122,15 @@ subjectSelect.addEventListener('change', () => {
 });
 
 if (statsSortSelect) {
-  statsSortSelect.addEventListener('change', () => renderStatsList());
+  statsSortSelect.addEventListener('change', () => {
+    const selectedSubject = statsSubjectSelect.value;
+    const filteredStats = globalStatsData.filter(s => s.subject === selectedSubject);
+    renderStatsList(filteredStats);
+  });
+}
+
+if (statsSubjectSelect) {
+  statsSubjectSelect.addEventListener('change', () => renderDashboardFiltered());
 }
 
 if (simpleTestBtn) {
@@ -206,37 +216,57 @@ function getFileInfo(path) {
   return { year: parts[0], question: parseInt(parts[1]) };
 }
 
-function getGroup(filename) {
-  const nameWithoutExt = filename.split('.')[0].trim();
-  const cleaned = nameWithoutExt.replace(/\s+/g, '');
-  return cleaned.slice(-2);
+function initializeGroupedQuestions() {
+  const subjects = ["ippan", "senmon"];
+  subjects.forEach(subject => {
+    groupedQuestions[subject] = {};
+    const imageFiles = appData.images[subject] || [];
+    imageFiles.forEach(file => {
+      const info = getFileInfo(file);
+      const key = `${info.year}_${info.question}`;
+      if (!groupedQuestions[subject][key]) {
+        groupedQuestions[subject][key] = {
+          id: key,
+          year: info.year,
+          question: info.question,
+          images: []
+        };
+      }
+      groupedQuestions[subject][key].images.push(`img/${subject}/${file}`);
+    });
+  });
 }
 
 function generateExam() {
   const subject = subjectSelect.value;
-  if (subject !== 'ippan') { alert('現在は「一般知識」のみ対応しています。'); return; }
+  if (subject !== 'ippan' && subject !== 'senmon') { alert('現在は「一般知識」と「専門知識」のみ対応しています。'); return; }
 
-  const groups = {};
-  for (let i = 1; i <= 15; i++) groups[i.toString().padStart(2, '0')] = [];
+  const subjectQuestions = groupedQuestions[subject];
+  if (!subjectQuestions || Object.keys(subjectQuestions).length === 0) { alert('画像データがありません。'); return; }
 
-  const availableImages = appData.images[subject];
-  if (!availableImages || availableImages.length === 0) { alert('画像データがありません。'); return; }
+  const questionGroups = {};
+  for (let i = 1; i <= 15; i++) {
+    questionGroups[i] = [];
+  }
 
-  availableImages.forEach(img => {
-    const groupKey = getGroup(img);
-    if (groups[groupKey]) groups[groupKey].push(img);
-  });
+  for (const key in subjectQuestions) {
+    const qObj = subjectQuestions[key];
+    if (questionGroups[qObj.question]) {
+      questionGroups[qObj.question].push(qObj);
+    }
+  }
 
   selectedImages = [];
   for (let i = 1; i <= 15; i++) {
-    const group = groups[i.toString().padStart(2, '0')];
+    const group = questionGroups[i];
     if (group && group.length > 0) {
-      selectedImages.push(`img/ippan/${group[Math.floor(Math.random() * group.length)]}`);
+      selectedImages.push(group[Math.floor(Math.random() * group.length)]);
     }
   }
+
   currentIndex = 0;
   isExamMode = true;
-  examResults = Array(15).fill(null);
+  examResults = Array(selectedImages.length).fill(null);
   if (viewResultsBtn) viewResultsBtn.style.display = 'block';
   updateViewer();
   viewer.style.display = 'flex';
@@ -247,19 +277,21 @@ function generateSimpleTest() {
   const subject = subjectSelect.value;
   const count = parseInt(modalQuestionCount.value);
   const selectedGenre = modalGenreSelect.value;
-  let availableImages = appData.images[subject] || [];
+
+  let availableQuestions = [];
+  const subjectQuestions = groupedQuestions[subject];
+  if (subjectQuestions) {
+    availableQuestions = Object.values(subjectQuestions);
+  }
   
   if (selectedGenre !== 'all') {
     const genreIds = appData.genres[subject]?.[selectedGenre] || [];
-    availableImages = availableImages.filter(img => {
-      const info = getFileInfo(img);
-      return genreIds.includes(`${info.year}_${info.question}`);
-    });
+    availableQuestions = availableQuestions.filter(qObj => genreIds.includes(qObj.id));
   }
 
-  if (availableImages.length === 0) { alert('該当する問題が見つかりませんでした。'); return; }
+  if (availableQuestions.length === 0) { alert('該当する問題が見つかりませんでした。'); return; }
 
-  selectedImages = [...availableImages].sort(() => 0.5 - Math.random()).slice(0, count).map(img => `img/${subject}/${img}`);
+  selectedImages = [...availableQuestions].sort(() => 0.5 - Math.random()).slice(0, count);
   currentIndex = 0;
   isExamMode = false;
   examResults = [];
@@ -282,14 +314,15 @@ async function fetchExplanation(year, question) {
 async function updateViewer() {
   if (selectedImages.length === 0) return;
   explanationContent.innerHTML = '';
-  examImg.style.opacity = 0;
   
-  const currentPath = selectedImages[currentIndex];
-  const { year, question } = getFileInfo(currentPath);
+  const qObj = selectedImages[currentIndex];
+  const year = qObj.year;
+  const question = qObj.question;
   document.getElementById('modal-title').textContent = `第${year}回 問${question} 解説`;
 
   if (currentUser && !isExamMode) {
-    const stats = await fetchQuestionStats(year, question);
+    const subject = subjectSelect.value;
+    const stats = await fetchQuestionStats(subject, year, question);
     displayStats(stats);
   } else {
     statsBadge.style.display = 'none';
@@ -310,11 +343,30 @@ async function updateViewer() {
     });
   }
 
-  setTimeout(() => {
-    examImg.src = currentPath;
-    examImg.style.opacity = 1;
-    statusText.textContent = `${currentIndex + 1} / ${selectedImages.length} （第${year}回問${question}）`;
-  }, 200);
+  const imgContainer = document.querySelector('.img-container');
+  imgContainer.innerHTML = '';
+  
+  qObj.images.forEach((path, idx) => {
+    const img = document.createElement('img');
+    img.src = path;
+    img.alt = `過去問画像 ${idx + 1}`;
+    img.style.opacity = 0;
+    img.style.transition = 'opacity 0.3s ease';
+    img.style.cursor = 'pointer';
+    
+    img.addEventListener('click', () => {
+      imageModal.style.display = 'flex';
+      fullImg.src = path;
+    });
+    
+    imgContainer.appendChild(img);
+    
+    setTimeout(() => {
+      img.style.opacity = 1;
+    }, 50);
+  });
+
+  statusText.textContent = `${currentIndex + 1} / ${selectedImages.length} （第${year}回問${question}）`;
 }
 
 function next() { if (currentIndex < selectedImages.length - 1) { currentIndex++; updateViewer(); } }
@@ -339,9 +391,10 @@ if (closeModal) closeModal.addEventListener('click', () => imageModal.style.disp
 imageModal.addEventListener('click', (e) => { if (e.target === imageModal) imageModal.style.display = 'none'; });
 
 // --- Stats Logic ---
-async function fetchQuestionStats(year, question) {
+async function fetchQuestionStats(subject, year, question) {
   if (!currentUser) return null;
-  const docRef = doc(db, "users", currentUser.uid, "question_stats", `${year}_${question}`);
+  const key = `${subject}_${year}_${question}`;
+  const docRef = doc(db, "users", currentUser.uid, "question_stats", key);
   const snap = await getDoc(docRef);
   return snap.exists() ? snap.data() : { correct: 0, count: 0 };
 }
@@ -358,15 +411,19 @@ async function recordResult(isCorrect) {
 
   if (!currentUser) { return; }
 
-  const { year, question } = getFileInfo(selectedImages[currentIndex]);
-  const docRef = doc(db, "users", currentUser.uid, "question_stats", `${year}_${question}`);
+  const subject = subjectSelect.value;
+  const qObj = selectedImages[currentIndex];
+  const year = qObj.year;
+  const question = qObj.question;
+  const key = `${subject}_${year}_${question}`;
+  const docRef = doc(db, "users", currentUser.uid, "question_stats", key);
 
   try {
     const snap = await getDoc(docRef);
     if (!snap.exists()) {
-      await setDoc(docRef, { correct: isCorrect ? 1 : 0, count: 1, lastAttemptAt: serverTimestamp() });
+      await setDoc(docRef, { subject: subject, correct: isCorrect ? 1 : 0, count: 1, lastAttemptAt: serverTimestamp() });
     } else {
-      await updateDoc(docRef, { correct: increment(isCorrect ? 1 : 0), count: increment(1), lastAttemptAt: serverTimestamp() });
+      await updateDoc(docRef, { subject: subject, correct: increment(isCorrect ? 1 : 0), count: increment(1), lastAttemptAt: serverTimestamp() });
     }
     const stats = await fetchQuestionStats(year, question);
     displayStats(stats);
@@ -395,31 +452,60 @@ async function openDashboard() {
     const q = query(collection(db, "users", currentUser.uid, "question_stats"));
     const snap = await getDocs(q);
     globalStatsData = [];
-    let totalAttempts = 0, totalCorrect = 0;
 
     snap.forEach((doc) => {
       const data = doc.data();
-      const parts = doc.id.split('_');
-      const year = parts[0], question = parseInt(parts[1]);
+      const id = doc.id;
+      let subject = data.subject;
+      let year, question;
+      const parts = id.split('_');
+      if (parts.length === 3) {
+        subject = subject || parts[0];
+        year = parts[1];
+        question = parseInt(parts[2]);
+      } else {
+        subject = subject || "ippan";
+        year = parts[0];
+        question = parseInt(parts[1]);
+      }
+
       const rate = data.count > 0 ? ((data.correct / data.count) * 100) : 0;
-      globalStatsData.push({ id: doc.id, year, question, displayId: `${year}回 問${question}`, ...data, rate });
-      totalAttempts += data.count;
-      totalCorrect += data.correct;
+      globalStatsData.push({
+        id: `${year}_${question}`,
+        subject,
+        year,
+        question,
+        displayId: `${year}回 問${question}`,
+        ...data,
+        rate
+      });
     });
 
-    totalAttemptsSpan.textContent = totalAttempts;
-    avgSuccessRateSpan.textContent = totalAttempts > 0 ? ((totalCorrect / totalAttempts) * 100).toFixed(1) : 0;
-    
-    renderGenreStats();
-    renderStatsList();
+    renderDashboardFiltered();
   } catch (e) { console.error(e); }
 }
 
-function renderGenreStats() {
-  const subject = subjectSelect.value;
+function renderDashboardFiltered() {
+  const selectedSubject = statsSubjectSelect.value;
+  const filteredStats = globalStatsData.filter(s => s.subject === selectedSubject);
+  
+  let totalAttempts = 0, totalCorrect = 0;
+  filteredStats.forEach(s => {
+    totalAttempts += s.count;
+    totalCorrect += s.correct;
+  });
+
+  totalAttemptsSpan.textContent = totalAttempts;
+  avgSuccessRateSpan.textContent = totalAttempts > 0 ? ((totalCorrect / totalAttempts) * 100).toFixed(1) : 0;
+
+  renderGenreStats(selectedSubject, filteredStats);
+  renderStatsList(filteredStats);
+}
+
+function renderGenreStats(subject, filteredStats) {
   const genres = appData.genres && appData.genres[subject];
   
-  if (!genres || Object.keys(genres).length === 0 || globalStatsData.length === 0) {
+  if (!genres || Object.keys(genres).length === 0 || filteredStats.length === 0) {
     if (genreStatsSection) genreStatsSection.style.display = 'none';
     return;
   }
@@ -433,7 +519,7 @@ function renderGenreStats() {
     let genreCorrect = 0;
     
     questionIds.forEach(qId => {
-      const stat = globalStatsData.find(s => s.id === qId);
+      const stat = filteredStats.find(s => s.id === qId);
       if (stat) {
         genreCount += stat.count;
         genreCorrect += stat.correct;
@@ -441,7 +527,7 @@ function renderGenreStats() {
     });
     
     let rate = 0;
-    let rateClass = 'low-rate'; // default or unattempted
+    let rateClass = 'low-rate';
     let detailsText = '未学習';
     
     if (genreCount > 0) {
@@ -450,7 +536,7 @@ function renderGenreStats() {
       if (rate >= 70) rateClass = 'high-rate';
       else if (rate >= 40) rateClass = 'mid-rate';
     } else {
-       rateClass = ''; // Unstyled for unattempted
+       rateClass = '';
     }
     
     let fillStyle = rateClass === 'high-rate' ? 'background-color: var(--success);' :
@@ -475,10 +561,10 @@ function renderGenreStats() {
   if (genreStatsList) genreStatsList.innerHTML = html;
 }
 
-function renderStatsList() {
-  if (globalStatsData.length === 0) { statsList.innerHTML = '<div style="text-align:center; padding:2rem;">データなし</div>'; return; }
+function renderStatsList(filteredStats) {
+  if (filteredStats.length === 0) { statsList.innerHTML = '<div style="text-align:center; padding:2rem;">データなし</div>'; return; }
   const sortType = statsSortSelect ? statsSortSelect.value : 'rate-asc';
-  const sorted = [...globalStatsData].sort((a, b) => {
+  const sorted = [...filteredStats].sort((a, b) => {
     if (sortType === 'rate-asc') return a.rate - b.rate;
     if (sortType === 'rate-desc') return b.rate - a.rate;
     if (a.year !== b.year) return parseInt(a.year) - parseInt(b.year);
@@ -494,13 +580,13 @@ function renderStatsList() {
 }
 
 window.jumpToQuestion = function(year, question) {
-  const subject = subjectSelect.value;
-  const imgFile = appData.images[subject].find(img => {
-    const info = getFileInfo(img);
-    return info.year == year && info.question == question;
-  });
-  if (imgFile) {
-    selectedImages = [`img/${subject}/${imgFile}`];
+  const subject = statsSubjectSelect.value;
+  subjectSelect.value = subject;
+  
+  const key = `${year}_${question}`;
+  const qObj = groupedQuestions[subject]?.[key];
+  if (qObj) {
+    selectedImages = [qObj];
     currentIndex = 0;
     updateViewer();
     switchView('home');
@@ -523,6 +609,7 @@ if (resetDataBtn) {
 // --- Init ---
 async function loadDataFromStorage() {
   if (typeof PRELOADED_DATA !== 'undefined') appData = PRELOADED_DATA;
+  initializeGroupedQuestions();
 }
 
 loadDataFromStorage();
@@ -564,8 +651,9 @@ function showExamResults() {
   resultScore.textContent = `${correctCount} / ${totalCount}`;
   resultPercent.textContent = `正解率 ${percentage}%`;
 
-  resultList.innerHTML = selectedImages.map((path, idx) => {
-    const { year, question } = getFileInfo(path);
+  resultList.innerHTML = selectedImages.map((qObj, idx) => {
+    const year = qObj.year;
+    const question = qObj.question;
     const result = examResults[idx];
     let badgeClass = 'unanswered';
     let badgeText = '未解答';
