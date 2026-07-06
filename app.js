@@ -369,10 +369,14 @@ function renderMarkdownWithMath(text) {
     return placeholder;
   });
   
-  // 3. Parse Markdown
+  // 3. Replace half-width tilde (~) with full-width wave dash (〜) outside math formulas
+  // to prevent marked.js from parsing it as strikethrough (del/s) tags.
+  processedText = processedText.replace(/~/g, '〜');
+  
+  // 4. Parse Markdown
   let html = marked.parse(processedText);
   
-  // 4. Restore math formulas (using split/join for global replacement)
+  // 5. Restore math formulas (using split/join for global replacement)
   placeholders.forEach(item => {
     html = html.split(item.placeholder).join(item.math);
   });
