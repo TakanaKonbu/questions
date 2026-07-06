@@ -1,10 +1,19 @@
 const { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, collection, getDocs, query, deleteDoc, writeBatch } = window.fb;
 
+// Configure marked.js to preserve line breaks
+if (window.marked) {
+  if (typeof window.marked.setOptions === 'function') {
+    window.marked.setOptions({ breaks: true });
+  } else if (typeof window.marked.use === 'function') {
+    window.marked.use({ breaks: true });
+  }
+}
+
 // --- Global State ---
 let currentUser = null;
 let currentQuestionStats = null;
-let appData = { images: { ippan: [], senmon: [] }, explanations: { ippan: {}, senmon: {} }, genres: {} };
-let groupedQuestions = { ippan: {}, senmon: {} };
+let appData = { images: { ippan: [], senmon: [] }, explanations: { ippan: {}, senmon: {} }, questions: {}, genres: {} };
+let groupedQuestions = { ippan: {}, senmon: {}, mogi_ippan: {}, mogi_senmon: {} };
 let selectedImages = [];
 let currentIndex = 0;
 let globalStatsData = [];
@@ -99,6 +108,16 @@ function updateGenreSelect() {
   const subject = subjectSelect.value;
   const genres = appData.genres && appData.genres[subject];
   modalGenreSelect.innerHTML = '<option value="all">全範囲</option>';
+  
+  const genreSettings = modalGenreSelect.closest('.test-settings');
+  if (genreSettings) {
+    if (subject.startsWith('mogi_')) {
+      genreSettings.style.display = 'none';
+    } else {
+      genreSettings.style.display = 'flex';
+    }
+  }
+
   if (genres && Object.keys(genres).length > 0) {
     for (const genreName in genres) {
       const option = document.createElement('option');
@@ -116,8 +135,8 @@ statsBackBtn.addEventListener('click', () => switchView('home'));
 
 subjectSelect.addEventListener('change', () => {
   const subject = subjectSelect.value;
-  const count = (subject === 'ippan' || subject === 'senmon') ? 15 : 5;
-  startBtn.textContent = `過去問作成 (${count}問)`;
+  const count = (subject === 'ippan' || subject === 'senmon' || subject === 'mogi_ippan' || subject === 'mogi_senmon') ? 15 : 5;
+  startBtn.textContent = (subject.startsWith('mogi_') ? '模擬試験作成' : '過去問作成') + ` (${count}問)`;
   updateGenreSelect();
 });
 
@@ -217,9 +236,11 @@ function getFileInfo(path) {
 }
 
 function initializeGroupedQuestions() {
-  const subjects = ["ippan", "senmon"];
+  const subjects = ["ippan", "senmon", "mogi_ippan", "mogi_senmon"];
   subjects.forEach(subject => {
     groupedQuestions[subject] = {};
+    
+    // Past exams (images)
     const imageFiles = appData.images[subject] || [];
     imageFiles.forEach(file => {
       const info = getFileInfo(file);
@@ -229,23 +250,45 @@ function initializeGroupedQuestions() {
           id: key,
           year: info.year,
           question: info.question,
-          images: []
+          images: [],
+          text: null
         };
       }
       groupedQuestions[subject][key].images.push(`img/${subject}/${file}`);
     });
+    
+    // Mock exams (texts)
+    const qTexts = appData.questions && appData.questions[subject];
+    if (qTexts) {
+      for (const year in qTexts) {
+        for (const question in qTexts[year]) {
+          const key = `${year}_${question}`;
+          if (!groupedQuestions[subject][key]) {
+            groupedQuestions[subject][key] = {
+              id: key,
+              year: year,
+              question: parseInt(question),
+              images: [],
+              text: qTexts[year][question]
+            };
+          } else {
+            groupedQuestions[subject][key].text = qTexts[year][question];
+          }
+        }
+      }
+    }
   });
 }
 
 function generateExam() {
   const subject = subjectSelect.value;
-  if (subject !== 'ippan' && subject !== 'senmon') { alert('現在は「一般知識」と「専門知識」のみ対応しています。'); return; }
+  const count = (subject === 'ippan' || subject === 'senmon' || subject === 'mogi_ippan' || subject === 'mogi_senmon') ? 15 : 5;
 
   const subjectQuestions = groupedQuestions[subject];
-  if (!subjectQuestions || Object.keys(subjectQuestions).length === 0) { alert('画像データがありません。'); return; }
+  if (!subjectQuestions || Object.keys(subjectQuestions).length === 0) { alert('問題データがありません。'); return; }
 
   const questionGroups = {};
-  for (let i = 1; i <= 15; i++) {
+  for (let i = 1; i <= count; i++) {
     questionGroups[i] = [];
   }
 
@@ -257,7 +300,7 @@ function generateExam() {
   }
 
   selectedImages = [];
-  for (let i = 1; i <= 15; i++) {
+  for (let i = 1; i <= count; i++) {
     const group = questionGroups[i];
     if (group && group.length > 0) {
       selectedImages.push(group[Math.floor(Math.random() * group.length)]);
@@ -304,6 +347,39 @@ function generateSimpleTest() {
 startBtn.addEventListener('click', generateExam);
 
 // --- Viewer Logic ---
+function renderMarkdownWithMath(text) {
+  if (!text) return '';
+  
+  const placeholders = [];
+  let index = 0;
+  
+  // 1. Protect display math ($$ ... $$)
+  let processedText = text.replace(/\$\$([\s\S]+?)\$\$/g, (match, math) => {
+    const placeholder = `EXAMDISPLAYMATH${index}EXAM`;
+    placeholders.push({ placeholder, math: `$$${math}$$` });
+    index++;
+    return placeholder;
+  });
+  
+  // 2. Protect inline math ($ ... $)
+  processedText = processedText.replace(/\$([^\$\n]+?)\$/g, (match, math) => {
+    const placeholder = `EXAMINLINEMATH${index}EXAM`;
+    placeholders.push({ placeholder, math: `$${math}$` });
+    index++;
+    return placeholder;
+  });
+  
+  // 3. Parse Markdown
+  let html = marked.parse(processedText);
+  
+  // 4. Restore math formulas (using split/join for global replacement)
+  placeholders.forEach(item => {
+    html = html.split(item.placeholder).join(item.math);
+  });
+  
+  return html;
+}
+
 async function fetchExplanation(year, question) {
   const subject = subjectSelect.value;
   const data = appData.explanations[subject]?.[year]?.[question];
@@ -318,10 +394,12 @@ async function updateViewer() {
   const qObj = selectedImages[currentIndex];
   const year = qObj.year;
   const question = qObj.question;
-  document.getElementById('modal-title').textContent = `第${year}回 問${question} 解説`;
+  
+  const subject = subjectSelect.value;
+  const isMogi = subject.startsWith('mogi_');
+  document.getElementById('modal-title').textContent = `${isMogi ? '' : '第'}${year}回 問${question} 解説`;
 
   if (currentUser && !isExamMode) {
-    const subject = subjectSelect.value;
     const stats = await fetchQuestionStats(subject, year, question);
     displayStats(stats);
   } else {
@@ -335,7 +413,7 @@ async function updateViewer() {
     return `<div class="alert ${type}">\n\n${content.replace(/^> /gim, '')}\n\n</div>`;
   });
 
-  explanationContent.innerHTML = marked.parse(mdText);
+  explanationContent.innerHTML = renderMarkdownWithMath(mdText);
   if (window.renderMathInElement) {
     renderMathInElement(explanationContent, {
       delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}],
@@ -346,27 +424,52 @@ async function updateViewer() {
   const imgContainer = document.querySelector('.img-container');
   imgContainer.innerHTML = '';
   
-  qObj.images.forEach((path, idx) => {
-    const img = document.createElement('img');
-    img.src = path;
-    img.alt = `過去問画像 ${idx + 1}`;
-    img.style.opacity = 0;
-    img.style.transition = 'opacity 0.3s ease';
-    img.style.cursor = 'pointer';
-    
-    img.addEventListener('click', () => {
-      imageModal.style.display = 'flex';
-      fullImg.src = path;
+  if (qObj.images && qObj.images.length > 0) {
+    imgContainer.style.display = 'flex';
+    qObj.images.forEach((path, idx) => {
+      const img = document.createElement('img');
+      img.src = path;
+      img.alt = `過去問画像 ${idx + 1}`;
+      img.style.opacity = 0;
+      img.style.transition = 'opacity 0.3s ease';
+      img.style.cursor = 'pointer';
+      
+      img.addEventListener('click', () => {
+        imageModal.style.display = 'flex';
+        fullImg.src = path;
+      });
+      
+      imgContainer.appendChild(img);
+      
+      setTimeout(() => {
+        img.style.opacity = 1;
+      }, 50);
     });
+  } else if (qObj.text) {
+    imgContainer.style.display = 'block';
+    const textDiv = document.createElement('div');
+    textDiv.className = 'exam-text';
+    textDiv.style.width = '100%';
+    textDiv.style.padding = '1.5rem';
+    textDiv.style.textAlign = 'left';
+    textDiv.style.overflowY = 'auto';
+    textDiv.style.maxHeight = '60vh';
     
-    imgContainer.appendChild(img);
+    textDiv.innerHTML = renderMarkdownWithMath(qObj.text);
     
-    setTimeout(() => {
-      img.style.opacity = 1;
-    }, 50);
-  });
+    if (window.renderMathInElement) {
+      renderMathInElement(textDiv, {
+        delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}],
+        throwOnError: false
+      });
+    }
+    
+    imgContainer.appendChild(textDiv);
+  } else {
+    imgContainer.style.display = 'none';
+  }
 
-  statusText.textContent = `${currentIndex + 1} / ${selectedImages.length} （第${year}回問${question}）`;
+  statusText.textContent = `${currentIndex + 1} / ${selectedImages.length} （${isMogi ? '模擬試験' : '第' + year + '回'}問${question}）`;
 }
 
 function next() { if (currentIndex < selectedImages.length - 1) { currentIndex++; updateViewer(); } }
