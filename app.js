@@ -566,23 +566,28 @@ async function openDashboard() {
       let subject = data.subject;
       let year, question;
       const parts = id.split('_');
-      if (parts.length === 3) {
-        subject = subject || parts[0];
-        year = parts[1];
-        question = parseInt(parts[2]);
-      } else {
+      if (parts.length >= 3) {
+        question = parseInt(parts[parts.length - 1]);
+        year = parts[parts.length - 2];
+        subject = subject || parts.slice(0, parts.length - 2).join('_');
+      } else if (parts.length === 2) {
         subject = subject || "ippan";
         year = parts[0];
         question = parseInt(parts[1]);
+      } else {
+        subject = subject || "ippan";
+        year = "unknown";
+        question = 0;
       }
 
       const rate = data.count > 0 ? ((data.correct / data.count) * 100) : 0;
+      const isMogi = subject.startsWith('mogi_');
       globalStatsData.push({
         id: `${year}_${question}`,
         subject,
         year,
         question,
-        displayId: `${year}回 問${question}`,
+        displayId: isMogi ? `模擬試験 ${year}回 問${question}` : `${year}回 問${question}`,
         ...data,
         rate
       });
@@ -678,17 +683,22 @@ function renderStatsList(filteredStats) {
     return a.question - b.question;
   });
 
-  statsList.innerHTML = sorted.map(stat => `
-    <div class="stat-item clickable" onclick="jumpToQuestion('${stat.year}', ${stat.question})">
-      <div class="stat-info"><span class="stat-q-id">第${stat.displayId}</span><br><small>解答:${stat.count}/正解:${stat.correct}</small></div>
-      <div class="stat-result"><span class="stat-percent ${stat.rate < 40 ? 'low-rate' : stat.rate < 70 ? 'mid-rate' : 'high-rate'}">${stat.rate.toFixed(0)}%</span></div>
-    </div>
-  `).join('');
+  statsList.innerHTML = sorted.map(stat => {
+    const isMogi = stat.subject.startsWith('mogi_');
+    const prefix = isMogi ? '' : '第';
+    return `
+      <div class="stat-item clickable" onclick="jumpToQuestion('${stat.year}', ${stat.question})">
+        <div class="stat-info"><span class="stat-q-id">${prefix}${stat.displayId}</span><br><small>解答:${stat.count}/正解:${stat.correct}</small></div>
+        <div class="stat-result"><span class="stat-percent ${stat.rate < 40 ? 'low-rate' : stat.rate < 70 ? 'mid-rate' : 'high-rate'}">${stat.rate.toFixed(0)}%</span></div>
+      </div>
+    `;
+  }).join('');
 }
 
 window.jumpToQuestion = function(year, question) {
   const subject = statsSubjectSelect.value;
   subjectSelect.value = subject;
+  subjectSelect.dispatchEvent(new Event('change'));
   
   const key = `${year}_${question}`;
   const qObj = groupedQuestions[subject]?.[key];
