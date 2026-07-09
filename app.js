@@ -337,8 +337,8 @@ function generateSimpleTest() {
   selectedImages = [...availableQuestions].sort(() => 0.5 - Math.random()).slice(0, count);
   currentIndex = 0;
   isExamMode = false;
-  examResults = [];
-  if (viewResultsBtn) viewResultsBtn.style.display = 'none';
+  examResults = Array(selectedImages.length).fill(null);
+  if (viewResultsBtn) viewResultsBtn.style.display = 'block';
   updateViewer();
   viewer.style.display = 'flex';
   viewer.scrollIntoView({ behavior: 'smooth' });
@@ -511,9 +511,17 @@ async function recordResult(isCorrect) {
   btn.classList.add('active');
   setTimeout(() => btn.classList.remove('active'), 200);
 
-  if (isExamMode) {
+  if (examResults && examResults.length > 0) {
     examResults[currentIndex] = isCorrect;
     updateExamButtonStyles();
+    
+    // 全問回答済みかつ最後の問題で回答した場合は自動で成績表示
+    const unansweredCount = examResults.filter(r => r === null).length;
+    if (unansweredCount === 0 && currentIndex === selectedImages.length - 1) {
+      setTimeout(() => {
+        showExamResults();
+      }, 300);
+    }
   }
 
   if (!currentUser) { return; }
@@ -739,7 +747,7 @@ function updateExamButtonStyles() {
   correctBtn.classList.remove('selected');
   incorrectBtn.classList.remove('selected');
 
-  if (isExamMode && examResults[currentIndex] !== null) {
+  if (examResults && examResults.length > 0 && examResults[currentIndex] !== null) {
     const isCorrect = examResults[currentIndex];
     if (isCorrect) {
       correctBtn.classList.add('selected');
@@ -752,7 +760,7 @@ function updateExamButtonStyles() {
 }
 
 function showExamResults() {
-  if (!isExamMode || selectedImages.length === 0) return;
+  if (selectedImages.length === 0) return;
 
   const unansweredCount = examResults.filter(r => r === null).length;
   if (unansweredCount > 0) {
@@ -783,10 +791,14 @@ function showExamResults() {
       badgeText = '不正解';
     }
 
+    const subject = subjectSelect.value;
+    const isMogi = subject.startsWith('mogi_');
+    const labelText = isMogi ? `模擬試験 ${year}回 問${question}` : `第${year}回 問${question}`;
+
     return `
       <div class="stat-item clickable" onclick="openExamResultExplanation(${idx})">
         <div class="stat-info">
-          <span class="stat-q-label">問${idx + 1}：第${year}回 問${question}</span>
+          <span class="stat-q-label">問${idx + 1}：${labelText}</span>
           <span class="stat-q-sub">クリックで解説を表示</span>
         </div>
         <div class="stat-result">
