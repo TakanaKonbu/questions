@@ -126,6 +126,18 @@ function updateGenreSelect() {
       modalGenreSelect.appendChild(option);
     }
   }
+
+  // 法規除外チェックボックスの表示制御
+  const excludeLawContainer = document.getElementById('exclude-law-container');
+  if (excludeLawContainer) {
+    if (subject === 'ippan' || subject === 'mogi_ippan') {
+      excludeLawContainer.style.display = 'flex';
+    } else {
+      excludeLawContainer.style.display = 'none';
+      const checkbox = document.getElementById('exclude-law-checkbox');
+      if (checkbox) checkbox.checked = false;
+    }
+  }
 }
 
 // --- Event Listeners (Init) ---
@@ -330,6 +342,14 @@ function generateSimpleTest() {
   if (selectedGenre !== 'all') {
     const genreIds = appData.genres[subject]?.[selectedGenre] || [];
     availableQuestions = availableQuestions.filter(qObj => genreIds.includes(qObj.id));
+  }
+
+  // 法規の除外処理
+  if (subject === 'ippan' || subject === 'mogi_ippan') {
+    const excludeLawCheckbox = document.getElementById('exclude-law-checkbox');
+    if (excludeLawCheckbox && excludeLawCheckbox.checked) {
+      availableQuestions = availableQuestions.filter(qObj => qObj.question !== 12 && qObj.question !== 13 && qObj.question !== 14);
+    }
   }
 
   if (availableQuestions.length === 0) { alert('該当する問題が見つかりませんでした。'); return; }
