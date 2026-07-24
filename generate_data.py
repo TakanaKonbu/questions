@@ -30,13 +30,13 @@ for subject in ["ippan", "senmon"]:
                         with open(os.path.join(root, file), 'r', encoding='utf-8') as f:
                             content = f.read()
                         
-                        parts = re.split(r'\n(?=# 問\d+)', '\n' + content)
+                        parts = re.split(r'\n(?=#+\s*問\d+)', '\n' + content)
                         
                         if year not in data["explanations"][subject]:
                             data["explanations"][subject][year] = {}
                         
                         for part in parts:
-                            q_match = re.search(r'^# 問(\d+)', part.strip())
+                            q_match = re.search(r'^#+\s*問(\d+)', part.strip())
                             if q_match:
                                 question = str(int(q_match.group(1)))
                                 data["explanations"][subject][year][question] = part.strip()
