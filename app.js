@@ -819,7 +819,7 @@ function showExamResults() {
       <div class="stat-item clickable" onclick="openExamResultExplanation(${idx})">
         <div class="stat-info">
           <span class="stat-q-label">問${idx + 1}：${labelText}</span>
-          <span class="stat-q-sub">クリックで解説を表示</span>
+          <span class="stat-q-sub">クリックでこの問題を表示</span>
         </div>
         <div class="stat-result">
           <span class="result-badge ${badgeClass}">${badgeText}</span>
@@ -838,8 +838,7 @@ window.openExamResultExplanation = async function(idx) {
   currentIndex = idx;
   await updateViewer();
 
-  // 結果モーダルを閉じ、解説モーダルを開く
+  // 結果モーダルを閉じる
   resultModal.style.display = 'none';
-  explanationModal.style.display = 'flex';
-  explanationContent.scrollTop = 0;
+  viewer.scrollIntoView({ behavior: 'smooth' });
 };
