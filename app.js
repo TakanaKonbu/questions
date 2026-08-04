@@ -70,6 +70,7 @@ const statCountSpan = document.getElementById('stat-count');
 const startBtn = document.getElementById('start-btn');
 const simpleTestBtn = document.getElementById('simple-test-btn');
 const subjectSelect = document.getElementById('subject-select');
+const yearSelect = document.getElementById('year-select');
 const simpleTestModal = document.getElementById('simple-test-modal');
 const modalGenreSelect = document.getElementById('modal-genre-select');
 const modalQuestionCount = document.getElementById('modal-question-count');
@@ -101,6 +102,58 @@ function switchView(viewName) {
     navHome.classList.remove('active');
     navStats.classList.add('active');
     openDashboard();
+  }
+}
+
+function updateYearSelect() {
+  if (!yearSelect) return;
+  const subject = subjectSelect.value;
+  const isMogi = subject.startsWith('mogi_');
+  
+  yearSelect.innerHTML = '<option value="random">全回からランダム (15問)</option>';
+  
+  const subjectQuestions = groupedQuestions[subject];
+  if (subjectQuestions) {
+    const yearsSet = new Set();
+    Object.values(subjectQuestions).forEach(qObj => {
+      if (qObj.year) yearsSet.add(qObj.year);
+    });
+    
+    // 数値順ソート
+    const sortedYears = Array.from(yearsSet).sort((a, b) => parseInt(a) - parseInt(b));
+    
+    sortedYears.forEach(year => {
+      const option = document.createElement('option');
+      option.value = year;
+      if (isMogi) {
+        const mogiNum = year.padStart(2, '0');
+        option.textContent = `${subject === 'mogi_ippan' ? '一般' : '専門'}模擬${mogiNum}（第${year}回 通し）`;
+      } else {
+        option.textContent = `第${year}回 通し (15問)`;
+      }
+      yearSelect.appendChild(option);
+    });
+  }
+  
+  updateStartBtnLabel();
+}
+
+function updateStartBtnLabel() {
+  if (!startBtn) return;
+  const subject = subjectSelect.value;
+  const yearVal = yearSelect ? yearSelect.value : 'random';
+  const isMogi = subject.startsWith('mogi_');
+  const count = (subject === 'ippan' || subject === 'senmon' || subject === 'mogi_ippan' || subject === 'mogi_senmon') ? 15 : 5;
+  
+  if (yearVal === 'random') {
+    startBtn.textContent = (isMogi ? '模擬試験作成' : '過去問作成') + ` (ランダム${count}問)`;
+  } else {
+    if (isMogi) {
+      const mogiNum = yearVal.padStart(2, '0');
+      startBtn.textContent = `${subject === 'mogi_ippan' ? '一般' : '専門'}模擬${mogiNum} を開始 (${count}問通し)`;
+    } else {
+      startBtn.textContent = `第${yearVal}回 を開始 (${count}問通し)`;
+    }
   }
 }
 
@@ -146,11 +199,15 @@ navStats.addEventListener('click', () => switchView('stats'));
 statsBackBtn.addEventListener('click', () => switchView('home'));
 
 subjectSelect.addEventListener('change', () => {
-  const subject = subjectSelect.value;
-  const count = (subject === 'ippan' || subject === 'senmon' || subject === 'mogi_ippan' || subject === 'mogi_senmon') ? 15 : 5;
-  startBtn.textContent = (subject.startsWith('mogi_') ? '模擬試験作成' : '過去問作成') + ` (${count}問)`;
+  updateYearSelect();
   updateGenreSelect();
 });
+
+if (yearSelect) {
+  yearSelect.addEventListener('change', () => {
+    updateStartBtnLabel();
+  });
+}
 
 if (statsSortSelect) {
   statsSortSelect.addEventListener('change', () => {
@@ -294,30 +351,40 @@ function initializeGroupedQuestions() {
 
 function generateExam() {
   const subject = subjectSelect.value;
+  const selectedYear = yearSelect ? yearSelect.value : 'random';
   const count = (subject === 'ippan' || subject === 'senmon' || subject === 'mogi_ippan' || subject === 'mogi_senmon') ? 15 : 5;
 
   const subjectQuestions = groupedQuestions[subject];
   if (!subjectQuestions || Object.keys(subjectQuestions).length === 0) { alert('問題データがありません。'); return; }
 
-  const questionGroups = {};
-  for (let i = 1; i <= count; i++) {
-    questionGroups[i] = [];
-  }
-
-  for (const key in subjectQuestions) {
-    const qObj = subjectQuestions[key];
-    if (questionGroups[qObj.question]) {
-      questionGroups[qObj.question].push(qObj);
-    }
-  }
-
   selectedImages = [];
-  for (let i = 1; i <= count; i++) {
-    const group = questionGroups[i];
-    if (group && group.length > 0) {
-      selectedImages.push(group[Math.floor(Math.random() * group.length)]);
+
+  if (selectedYear === 'random') {
+    const questionGroups = {};
+    for (let i = 1; i <= count; i++) {
+      questionGroups[i] = [];
     }
+
+    for (const key in subjectQuestions) {
+      const qObj = subjectQuestions[key];
+      if (questionGroups[qObj.question]) {
+        questionGroups[qObj.question].push(qObj);
+      }
+    }
+
+    for (let i = 1; i <= count; i++) {
+      const group = questionGroups[i];
+      if (group && group.length > 0) {
+        selectedImages.push(group[Math.floor(Math.random() * group.length)]);
+      }
+    }
+  } else {
+    // 指定された回（例：59回、模擬3回など）の全15問を問題番号順にセット
+    const filtered = Object.values(subjectQuestions).filter(qObj => qObj.year === selectedYear);
+    selectedImages = filtered.sort((a, b) => a.question - b.question);
   }
+
+  if (selectedImages.length === 0) { alert('該当する問題が見つかりませんでした。'); return; }
 
   currentIndex = 0;
   isExamMode = true;
@@ -758,6 +825,7 @@ async function loadDataFromStorage() {
 }
 
 loadDataFromStorage();
+updateYearSelect();
 updateGenreSelect();
 
 // --- Test Results Helpers ---

@@ -36,19 +36,30 @@
             <!-- Home View -->
             <div id="home-view" class="view active">
                 <div class="controls">
-                <select id="subject-select">
-                    <option value="ippan">一般知識</option>
-                    <option value="senmon">専門知識</option>
-                    <option value="mogi_ippan">一般知識 (模擬試験)</option>
-                    <option value="mogi_senmon">専門知識 (模擬試験)</option>
-                    <option value="jitsugi1">実技1</option>
-                    <option value="jitsugi2">実技2</option>
-                </select>
-                <div class="button-group">
-                    <button id="start-btn">過去問作成 (15問)</button>
-                    <button id="simple-test-btn" class="accent-btn">簡易テスト作成</button>
+                    <div class="select-group" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <label for="subject-select" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem; display: block;">科目を選択</label>
+                            <select id="subject-select" style="width: 100%;">
+                                <option value="ippan">一般知識</option>
+                                <option value="senmon">専門知識</option>
+                                <option value="mogi_ippan">一般知識 (模擬試験)</option>
+                                <option value="mogi_senmon">専門知識 (模擬試験)</option>
+                                <option value="jitsugi1">実技1</option>
+                                <option value="jitsugi2">実技2</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <label for="year-select" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem; display: block;">出題形式・回を選択</label>
+                            <select id="year-select" style="width: 100%;">
+                                <option value="random">全回からランダム (15問)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button id="start-btn">過去問作成 (15問)</button>
+                        <button id="simple-test-btn" class="accent-btn">簡易テスト作成</button>
+                    </div>
                 </div>
-            </div>
 
             <!-- Simple Test Settings Modal -->
             <div id="simple-test-modal" class="modal">
