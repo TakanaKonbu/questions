@@ -39,6 +39,9 @@ for subject in ["ippan", "senmon"]:
                             q_match = re.search(r'^#+\s*問(\d+)', part.strip())
                             if q_match:
                                 question = str(int(q_match.group(1)))
+                                # 一般 60回 問8 および 一般 57回 問3 を非表示除外
+                                if subject == "ippan" and ((year == "60" and question == "8") or (year == "57" and question == "3")):
+                                    continue
                                 data["explanations"][subject][year][question] = part.strip()
 
 # Process mock exams (mogi)
